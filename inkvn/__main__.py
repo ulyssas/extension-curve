@@ -24,10 +24,11 @@ if not hasattr(warnings, "warn"):
 
 try:
     import inkex  # check inkex
-    from . import decoder  # check that we are a package
+    from . import svg  # check that we are a package
 except ImportError:
     # This is suggested by https://docs.python-guide.org/writing/structure/.
     sys.path.insert(0, PARENT)
+    #raise ImportError(f"{HERE}, {PARENT}")
     try:
         from inkvn.vninput import main
     except ImportError:

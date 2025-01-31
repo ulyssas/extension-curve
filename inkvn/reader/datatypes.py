@@ -7,22 +7,26 @@ Intermediate data format in inkvn
 from __future__ import annotations
 
 import colorsys
+import math
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Tuple
+
+import inkex
 
 
 @dataclass
 class BaseElement:
     """Common Element properties."""
-    name: str = "Unnamed Element"
-    blur: float = 0.0
-    opacity: float = 1.0
-    blendMode: int = 0
-    isHidden: bool = False
-    isLocked: bool = False
+    name: str
+    blur: float
+    opacity: float
+    blendMode: int
+    isHidden: bool
+    isLocked: bool
     localTransform: localTransform
 
-    def _blend_mode_to_svg(blendmode: int) -> str:
+    @staticmethod
+    def blend_mode_to_svg(blendmode: int) -> str:
         """Returns value for mix-blend-mode attribute."""
         blend_mode_map = {
             0: "normal",
@@ -46,11 +50,12 @@ class ImageElement(BaseElement):
     imageData: str
 
 
+# TODO WHAT WILL HAPPEN>>>????
 @dataclass
 class PathElement(BaseElement):
-    fill: Color
-    fillId: int
-    strokeStyle: pathStrokeStyle
+    fill: Optional[Color]
+    fillId: Optional[int]
+    strokeStyle: Optional[pathStrokeStyle]
     pathGeometry: Dict
 
 
@@ -63,23 +68,24 @@ class PathElement(BaseElement):
 
 @dataclass
 class GroupElement(BaseElement):
-    groupElements: List[BaseElement] = field(default_factory=list)
+    groupElements: List[BaseElement]
 
 
 @dataclass
 class Layer:
-    name: str = "Unnamed Layer"
-    opacity: float = 1.0
-    isVisible: bool = True
-    isLocked: bool = False
-    elements: List[BaseElement] = field(default_factory=list)
+    name: str
+    opacity: float
+    isVisible: bool
+    isLocked: bool
+    isExpanded: bool
+    elements: List[BaseElement]
 
 
 @dataclass
 class Artboard:
-    title: str = "Untitled"
+    title: str
     frame: Frame
-    layers: List[Layer] = field(default_factory=list)
+    layers: List[Layer]
 
 
 @dataclass
@@ -97,6 +103,49 @@ class localTransform:
     scale: List[float] = field(default_factory=lambda: [1.0, 1.0])
     shear: float = 0.0
     translation: List[float] = field(default_factory=lambda: [0.0, 0.0])
+
+    def create_transform(self, keep_proportion=False) -> inkex.transforms.Transform:
+        """
+        Creates a transform string for the `g` element in inkex.transforms.Transform.
+        """
+
+        # Extract values
+        rotation_deg = math.degrees(self.rotation)
+        sx, sy = self.scale
+        # Shear is given in radians
+        shear_deg = math.degrees(math.atan(self.shear))
+        tx, ty = self.translation
+
+        # Create transform components
+        # The order matters
+        tr = inkex.transforms.Transform()
+        if tx != 0 or ty != 0:
+            # Translate by (tx, ty)
+            tr.add_translate(tx, ty)
+
+        if self.rotation != 0:
+            # Rotate around origin (adjust if a specific pivot is needed)
+            tr.add_rotate(rotation_deg)
+
+        if sx != 1 or sy != 1:
+            # Scale by (sx, sy)
+            if keep_proportion == True:
+                tr.add_scale(sx)
+            else:
+                tr.add_scale(sx, sy)
+
+        if self.shear != 0:
+            # Skew in the X direction
+            tr.add_skewx(shear_deg)
+
+        return tr
+
+
+@dataclass
+class pathGeometry:
+    """path format in Linearity Curve."""
+    closed: bool
+    nodes: List[Dict]
 
 
 class Color:
@@ -132,7 +181,7 @@ class Color:
         if rgba:
             r, g, b, a = self._rgba_to_tuple(rgba)
         elif hsba:
-            r, g, b, a = self._hsba_to_rgba(hsba)
+            r, g, b, a = self._hsba_to_rgba_tuple(hsba)
         else:
             return None
 
@@ -172,17 +221,18 @@ class Color:
 class pathStrokeStyle:
     basicStrokeStyle: basicStrokeStyle
     color: Color
-    width: float = 1.0
+    width: float
 
 
 class basicStrokeStyle:
     def __init__(self, cap: int, dashPattern: Optional[List[float]], join: int, position: int):
-        self.cap: str = self._cap_to_svg(cap)
+        self.cap: str = self.cap_to_svg(cap)
         self.dashPattern: List[float] = dashPattern if dashPattern is not None else [0, 0, 0, 0]
-        self.join: str = self._join_to_svg(join)
+        self.join: str = self.join_to_svg(join)
         self.position: int = position
 
-    def _cap_to_svg(cap):
+    @staticmethod
+    def cap_to_svg(cap):
         """Returns value for stroke-linecap attribute."""
         cap_map = {
             0: "butt",
@@ -191,7 +241,8 @@ class basicStrokeStyle:
         }
         return cap_map.get(cap, "butt")
 
-    def _join_to_svg(join: int) -> str:
+    @staticmethod
+    def join_to_svg(join: int) -> str:
         """Returns value for stroke-linejoin attribute."""
         join_map = {
             0: "miter",
@@ -199,4 +250,3 @@ class basicStrokeStyle:
             2: "bevel",
         }
         return join_map.get(join, "miter")
-

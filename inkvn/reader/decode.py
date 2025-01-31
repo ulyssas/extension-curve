@@ -5,188 +5,213 @@ converts Linearity Curve (5.18) JSON data to inkvn.
 
 Only tested for fileFormatVersion 44.
 
-You can upgrade file format by opening vectornator file in Linearity Curve, then export as .curve.
-
-Curve 5.18.0 ~ 5.18.4 use fileFormatVersion 44, while Curve 5.1.1 and 5.1.2 use 21.
+TODO: Adapt to datatypes.py
 """
 
-import extract as ext
-from datatypes import (
+from typing import Any, Dict, List
+
+import inkvn.reader.extract as ext
+from inkvn.reader.datatypes import (
     Artboard, BaseElement, Color, Frame, GroupElement,
     ImageElement, Layer, PathElement, basicStrokeStyle,
-    localTransform, pathStrokeStyle
+    localTransform, pathGeometry, pathStrokeStyle
 )
 
 
-def read_gid_json(archive, gid_json):
+def read_artboard(archive: Any, gid_json: Dict) -> Artboard:
     """
-    Reads gid.json and returns simply-structured data.
+    Reads gid.json(artboard) and returns artboard class.
 
     Argument `archive` is needed for image embedding.
     """
     # "layer_ids" contain layer indexes, while "layers" contain existing layers
-    layer_ids = gid_json.get("artboards", [])[0].get("layerIds", [])
-    layers = gid_json.get("layers", [])
-    layers_result = []
+    artboard = gid_json["artboards"][0] # ? format version sensitive????
+    layer_ids = artboard["layerIds"]
+    layer_list: List[Layer] = []
 
-    # Locate elements specified in layers.elementIds with traverse_layer
+    # Locate elements specified in layers.elementIds with read_layer
     for layer_id in layer_ids:
-        layer = layers[layer_id]
-        layers_result.append(traverse_layer(archive, gid_json, layer))
+        layer = get_json_element(gid_json, "layers", layer_id)
+        layer_list.append(read_layer(archive, gid_json, layer))
 
-    return layers_result
+    return Artboard(
+        title=artboard["title"],
+        frame=Frame(**artboard["frame"]),
+        layers=layer_list
+    )
 
 
-def traverse_layer(archive, gid_json, layer):
-    """Traverse specified layer and extract their attributes."""
-    layer_element_ids = layer.get("elementIds", [])
-    layer_result = {
-        "name": layer.get("name", "Unnamed Layer"),
-        "opacity": layer.get("opacity", 1),
-        "isVisible": layer.get("isVisible", True),
-        "isLocked": layer.get("isLocked", False),
-        "isExpanded": layer.get("isExpanded", False),
-        "elements": []  # store elements inside the layer
-    }
+def read_layer(archive: Any, gid_json: Dict, layer: Dict) -> Layer:
+    """
+    Read specified layer and return their attributes as class.
+
+    gid_json is used for finding elements inside the layer.
+    """
+    layer_element_ids = layer["elementIds"]
+    element_list: List[BaseElement] = []
+
     # process each elements
     for element_id in layer_element_ids:
-        element = get_element(gid_json, element_id)
-        if element:
-            layer_result["elements"].append(
-                traverse_element(archive, gid_json, element))
+        element = get_json_element(gid_json, "elements", element_id)
+        if element is not None:
+            element_list.append(read_element(archive, gid_json, element))
 
-    return layer_result
+    return Layer(
+        name=layer["name"],
+        opacity=layer["opacity"],
+        isVisible=layer["isVisible"],
+        isLocked=layer["isLocked"],
+        isExpanded=layer["isExpanded"],
+        elements=element_list
+    )
 
 
-def traverse_element(archive, gid_json, element):
+def read_element(archive, gid_json, element) -> BaseElement:
     """Traverse specified element and extract their attributes."""
 
-    # easier-to-process data structure
-    element_result = {
+    base_element_data = {
         "name": element.get("name", "Unnamed Element"),
-        "isHidden": element.get("isHidden", False),
-        # isLocked requires sodipodi:insensitive
-        "opacity": element.get("opacity", 1),
+        "blur": element.get("blur", 0.0),
+        "opacity": element.get("opacity", 1.0),
         "blendMode": element.get("blendMode", 0),
-        "blur": element.get("blur", 0),
-        "localTransform": None,
-        "imageData": None,  # will be base64 string
-        "styledText": None,  # from styledTexts
-        "textProperty": None,  # from texts
-        "singleStyle": None,
-        "strokeStyle": None,  # what is fillRule/strokeType?
-        "fill": None,
-        "fillId": None,
-        "pathGeometry": [],  # array because compoundPath
-        "groupElements": []  # store group elements
+        "isHidden": element.get("isHidden", False),
+        "isLocked": element.get("isLocked", False),
+        "localTransform": None
     }
 
-    # localTransform
-    local_transform_id = element.get("localTransformId")
+    # localTransform (BaseElement)
+    local_transform_id = element["localTransformId"]
     if local_transform_id is not None:
-        element_result["localTransform"] = get_local_transform(
-            gid_json, local_transform_id)
+        base_element_data["localTransform"] = localTransform(
+            **get_json_element(gid_json, "localTransforms", local_transform_id)
+        )
 
-    # Image
+    # Image (ImageElement)
     image_id = element.get("subElement", {}).get("image", {}).get("_0")
     if image_id is not None:
         # relativePath contains *.dat (bitmap data)
         # sharedFileImage doesn't exist in 5.1.1 (file version 21) document
-        image = get_image(gid_json, image_id).get(
-            "imageData", {}).get("sharedFileImage", {}).get("_0")
-        image_data = get_image_data(gid_json, image).get("relativePath", "")
-        element_result["imageData"] = ext.read_dat_from_zip(
-            archive, image_data)
+        # TODO: Add support for older files
+        image = get_json_element(gid_json, "images", image_id)["imageData"]["sharedFileImage"]["_0"]
+        image_file = get_json_element(gid_json, "imageDatas", image)["relativePath"]
+        image_data = ext.read_dat_from_zip(archive, image_file)
+        return ImageElement(imageData=image_data, **base_element_data)
 
-    # Stylable
+    # Stylable (either PathElement or TextElement)
     stylable_id = element.get("subElement", {}).get("stylable", {}).get("_0")
     if stylable_id is not None:
-        stylable = get_stylable(gid_json, stylable_id)
+        stylable = get_json_element(gid_json, "stylables", stylable_id)
 
-        # Abstract Path
-        abstract_path_id = stylable.get("subElement", {}).get(
-            "abstractPath", {}).get("_0")
+        # Abstract Path (PathElement)
+        abstract_path_id = stylable.get("subElement", {}).get("abstractPath", {}).get("_0")
         if abstract_path_id is not None:
-            abstract_path = get_abstract_path(gid_json, abstract_path_id)
+            abstract_path = get_json_element(gid_json, "abstractPaths", abstract_path_id)
+
+            # will be used to return PathElement
+            fill = None
+            fill_id = None
+            stroke_style = None
 
             # Stroke Style
             stroke_style_id = abstract_path.get("strokeStyleId")
             if stroke_style_id is not None:
-                element_result["strokeStyle"] = get_stroke_style(
-                    gid_json, stroke_style_id)
+                stroke_style = get_json_element(gid_json, "pathStrokeStyles", stroke_style_id)
+                stroke_style = pathStrokeStyle(
+                    basicStrokeStyle=basicStrokeStyle(**stroke_style["basicStrokeStyle"]),
+                    color=Color(color_dict=stroke_style["color"]),
+                    width=stroke_style["width"]
+                )
 
             # fill
             fill_id = abstract_path.get("fillId")
             if fill_id is not None:
-                element_result["fill"] = get_fill(gid_json, fill_id)
-                element_result["fillId"] = fill_id
+                gradient = get_json_element(gid_json, "fills", fill_id).get("gradient", {}).get("_0")
+                color: Dict = get_json_element(gid_json, "fills", fill_id).get("color", {}).get("_0")
+
+                if gradient is not None:
+                    # raise NotImplementedError("Gradient is not supported.")
+                    pass
+                elif color is not None:
+                    fill = Color(color_dict=color)
 
             # Path
-            path_id = abstract_path.get(
-                "subElement", {}).get("path", {}).get("_0")
+            path_id = abstract_path.get("subElement", {}).get("path", {}).get("_0")
+            path_geometry_list: List[pathGeometry] = []
             if path_id is not None:
-                path = get_path(gid_json, path_id)
+                path = get_json_element(gid_json, "paths", path_id)
 
                 # Path Geometry
-                geometry_id = path.get("geometryId")
+                geometry_id = path["geometryId"]
                 if geometry_id is not None:
-                    path_geometry = get_path_geometries(gid_json, geometry_id)
-                    element_result["pathGeometry"].append(path_geometry)
+                    path_geometry = pathGeometry(
+                        **get_json_element(gid_json, "pathGeometries", geometry_id)
+                    )
+                    path_geometry_list.append(path_geometry)
 
             # compoundPath
-            compound_path_id = abstract_path.get(
-                "subElement", {}).get("compoundPath", {}).get("_0")
+            compound_path_id = abstract_path.get("subElement", {}).get("compoundPath", {}).get("_0")
             if compound_path_id is not None:
-                compound_path = get_compound_path(gid_json, compound_path_id)
+                compound_path = get_json_element(gid_json, "compoundPaths", compound_path_id)
 
                 # Path Geometries (subpath)
-                subpath_ids = compound_path.get("subpathIds", [])
+                # TODO: pathGeometry should be classes
+                subpath_ids = compound_path.get("subpathIds")
                 if subpath_ids is not None:
                     for id in subpath_ids:
-                        path_geometry = get_path_geometries(gid_json, id)
-                        element_result["pathGeometry"].append(path_geometry)
+                        path_geometry = pathGeometry(
+                            **get_json_element(gid_json, "pathGeometries", id)
+                        )
+                        path_geometry_list.append(path_geometry)
 
-        # Abstract Text
-        abstract_text_id = stylable.get("subElement", {}).get(
-            "abstractText", {}).get("_0")
+            return PathElement(
+                fill=fill,
+                fillId=fill_id,
+                strokeStyle=stroke_style,
+                pathGeometry=path_geometry_list,
+                **base_element_data
+            )
+
+        # Abstract Text (TextElement)
+        abstract_text_id = stylable.get("subElement", {}).get("abstractText", {}).get("_0")
         if abstract_text_id is not None:
-            abstract_text = get_abstract_text(gid_json, abstract_text_id)
-            text_id = abstract_text.get("textId")
-            styled_text_id = abstract_text.get(
-                "subElement", {}).get("text", {}).get("_0")
+            raise NotImplementedError("Text is not supported.")
+        #     abstract_text = get_json_element(gid_json, "abstractTexts", abstract_text_id)
+        #     text_id = abstract_text["textId"]
+        #     styled_text_id = abstract_text["subElement"]["text"]["_0"]
 
-            # texts(layout)
-            if text_id is not None:
-                element_result["textProperty"] = get_text_property(
-                    gid_json, text_id)  # from texts
+        #     # texts(layout??), will be named textProperty internally
+        #     if text_id is not None:
+        #         element_result["textProperty"] = get_json_element(gid_json, "texts", text_id)
 
-            # styledTexts
-            if styled_text_id is not None:
-                element_result["styledText"] = get_styled_text(
-                    gid_json, styled_text_id)  # from styledTexts
+        #     # styledTexts
+        #     if styled_text_id is not None:
+        #         element_result["styledText"] = get_json_element(gid_json, "styledTexts", styled_text_id)
 
         #! singleStyle (NON-EXISTENT in latest format, found in fileVersion 21)
-        single_style_id = stylable.get("subElement", {}).get(
-            "singleStyle", {}).get("_0")
-        if single_style_id is not None:
-            single_style = get_single_style(gid_json, single_style_id)
-            element_result["singleStyle"] = single_style
-            # TODO Add lines later
+        #single_style_id = stylable["subElement"]["singleStyle"]["_0"]
+        #if single_style_id is not None:
+        #    single_style = get_json_element(gid_json, "singleStyles", single_style_id)
+        #    element_result["singleStyle"] = single_style
+        #    # TODO Add singleStyles support later
 
-    # Group
+    # Group (GroupElement)
     group_id = element.get("subElement", {}).get("group", {}).get("_0")
     if group_id is not None:
         # get elements inside group
-        group = get_group(gid_json, group_id)
-        group_element_ids = group.get("elementIds", [])
+        group = get_json_element(gid_json, "groups", group_id)
+        group_element_ids = group["elementIds"]
+        group_element_list: List[BaseElement] = []
+
         for group_element_id in group_element_ids:
-            group_element = get_element(gid_json, group_element_id)
+            group_element = get_json_element(gid_json, "elements", group_element_id)
             if group_element:
                 # get group elements recursively
-                element_result["groupElements"].append(
-                    traverse_element(archive, gid_json, group_element))
+                group_element_list.append(read_element(archive, gid_json, group_element))
 
-    return element_result
+        return GroupElement(groupElements=group_element_list, **base_element_data)
+
+    # if the element is unknown type:
+    return BaseElement(**base_element_data)
 
 
 def vectornator_to_artboard(gid_json):
@@ -199,101 +224,8 @@ def vectornator_to_artboard(gid_json):
     }
 
 
-# get_(name) functions
-# could be incorporated into Object(will happen when inkex rewrite)
-
-
-def get_element(gid_json, index):
-    """Get element from gid_json."""
-    elements = gid_json.get("elements", [])
+def get_json_element(gid_json: Dict, list_key: str, index: int) -> Any:
+    """Get an attribute according to key and index from gid_json."""
+    elements = gid_json[list_key]
     return elements[index]
 
-
-def get_local_transform(gid_json, index):
-    """Get localTransform from gid_json."""
-    local_transforms = gid_json.get("localTransforms", [])
-    return local_transforms[index]
-
-
-def get_image(gid_json, index):
-    """Get image from gid_json."""
-    images = gid_json.get("images", [])
-    return images[index]
-
-
-def get_image_data(gid_json, index):
-    """Get imageData from gid_json."""
-    image_datas = gid_json.get("imageDatas", [])
-    return image_datas[index]
-
-
-def get_text_property(gid_json, index):
-    """Get text(textProperty) from gid_json."""
-    text_property = gid_json.get("texts", [])
-    return text_property[index]
-
-
-def get_styled_text(gid_json, index):
-    """Get styledText from gid_json."""
-    styled_text = gid_json.get("styledTexts", [])
-    return styled_text[index]
-
-
-def get_stylable(gid_json, index):
-    """Get stylable from gid_json."""
-    stylables = gid_json.get("stylables", [])
-    return stylables[index]
-
-
-def get_group(gid_json, index):
-    """Get group from gid_json."""
-    groups = gid_json.get("groups", [])
-    return groups[index]
-
-
-def get_abstract_path(gid_json, index):
-    """Get abstractPath from gid_json."""
-    abstract_paths = gid_json.get("abstractPaths", [])
-    return abstract_paths[index]
-
-
-def get_abstract_text(gid_json, index):
-    """Get abstractText from gid_json."""
-    abstract_texts = gid_json.get("abstractTexts", [])
-    return abstract_texts[index]
-
-
-def get_single_style(gid_json, index):
-    """Get singleStyle from gid_json."""
-    single_styles = gid_json.get("singleStyles", [])
-    return single_styles[index]
-
-
-def get_stroke_style(gid_json, index):
-    """Get pathStrokeStyle from gid_json."""
-    stroke_styles = gid_json.get("pathStrokeStyles", [])
-    return stroke_styles[index]
-
-
-def get_fill(gid_json, index):
-    """Get fill from gid_json."""
-    fills = gid_json.get("fills", [])
-    return fills[index]
-
-
-def get_path(gid_json, index):
-    """Get path from gid_json."""
-    paths = gid_json.get("paths", [])
-    return paths[index]
-
-
-def get_compound_path(gid_json, index):
-    """Get compoundPath from gid_json."""
-    compound_paths = gid_json.get("compoundPaths", [])
-    return compound_paths[index]
-
-
-def get_path_geometries(gid_json, index):
-    """Get pathGeometry from gid_json."""
-    path_geometries = gid_json.get("pathGeometries", [])
-    return path_geometries[index]

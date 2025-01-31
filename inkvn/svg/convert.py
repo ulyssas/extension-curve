@@ -2,36 +2,43 @@
 Convert the intermediate data read by read.py
 """
 
-from ..reader.datatypes import (
+import inkex
+import lxml.etree
+
+from inkvn.reader.datatypes import (
     Artboard, BaseElement, Color, Frame, GroupElement,
     ImageElement, Layer, PathElement, basicStrokeStyle,
-    localTransform, pathStrokeStyle
+    localTransform, pathGeometry, pathStrokeStyle
 )
-from ..reader.read import CurveReader  # noqa: E402
+from inkvn.reader.read import CurveReader  # noqa: E402
 
 
 class CurveConverter():
     def __init__(self) -> None:
-        pass
+        self.reader: CurveReader
+        self.doc: lxml.etree._ElementTree
+        self.document: inkex.SvgDocumentElement
 
-    def convert(self, extractor: CurveReader) -> None:
-        self.extractor = extractor
-        self.afdoc = parse(extractor)
-        self.doc = SvgOutputMixin.get_template(
-            width=self.afdoc["DocR"].get("DfSz", (100, 100))[0],
-            height=self.afdoc["DocR"].get("DfSz", (100, 100))[1],
-            unit="px",
+    def convert(self, reader: CurveReader) -> None:
+        self.reader = reader
+        
+        if not doc:
+            doc = self.get_template(
+                width=artboard["frame"]["width"],
+                height=artboard["frame"]["height"],
+            )
+        svg = doc.getroot()
+        page = inkex.Page.new(
+            width=artboard["frame"]["width"],
+            height=artboard["frame"]["height"],
+            x=artboard["frame"]["x"],
+            y=artboard["frame"]["y"],
         )
-        self.document = self.doc.getroot()
-        root_chlds = self.afdoc["DocR"].get("Chld", [])
-        assert len(root_chlds) <= 1
-        if root_chlds:
-            self._parse_doc(root_chlds[0])
+        svg.namedview.add(page)
+        page.set("inkscape:label", artboard["title"])
+        self.load_page(
+            svg.add(inkex.Layer.new(artboard["title"])), artboard
+        )
+        # TODO Grids are per artboard, not global
+        doc.getroot()
 
-        if "DCMD" in self.afdoc["DocR"] and "FlNm" in self.afdoc["DocR"]["DCMD"]:
-            title = self.afdoc["DocR"]["DCMD"]["FlNm"]
-            title = (
-                title[: -len(".afdesign")
-                      ] if title.endswith(".afdesign") else title
-            ) + ".svg"
-            self.document.add(inkex.Title.new(title))
