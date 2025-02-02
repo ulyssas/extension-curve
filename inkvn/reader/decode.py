@@ -4,11 +4,11 @@ VI decoders
 converts Linearity Curve (5.18) JSON data to inkvn.
 
 Only tested for fileFormatVersion 44.
-
-TODO: Adapt to datatypes.py
 """
 
 from typing import Any, Dict, List
+
+import inkex
 
 import inkvn.reader.extract as ext
 from inkvn.reader.datatypes import (
@@ -102,18 +102,29 @@ def read_element(archive, gid_json, element) -> BaseElement:
     if stylable_id is not None:
         stylable = get_json_element(gid_json, "stylables", stylable_id)
 
+        # will be used to return PathElement
+        fill = None
+        fill_id: int = None
+        stroke_style = None
+        stroke_style_id: int = None
+        abstract_path_id: int = None
+
+        # ! singleStyles compatibility (NOT TESTED AT ALL), based on Curve 5.1.2
+        single_style_id = stylable.get("subElement", {}).get("singleStyle", {}).get("_0")
+        if single_style_id is not None:
+            single_style = get_json_element(gid_json, "singleStyles", single_style_id)
+            # old abstractPath lacks these ids
+            stroke_style_id = stylable.get("strokeStyleId")
+            fill_id = single_style.get("fillId")
+            abstract_path_id = single_style.get("subElement")
+
         # Abstract Path (PathElement)
-        abstract_path_id = stylable.get("subElement", {}).get("abstractPath", {}).get("_0")
+        abstract_path_id = stylable.get("subElement", {}).get("abstractPath", {}).get("_0", abstract_path_id)
         if abstract_path_id is not None:
             abstract_path = get_json_element(gid_json, "abstractPaths", abstract_path_id)
 
-            # will be used to return PathElement
-            fill = None
-            fill_id = None
-            stroke_style = None
-
             # Stroke Style
-            stroke_style_id = abstract_path.get("strokeStyleId")
+            stroke_style_id = abstract_path.get("strokeStyleId", stroke_style_id)
             if stroke_style_id is not None:
                 stroke_style = get_json_element(gid_json, "pathStrokeStyles", stroke_style_id)
                 stroke_style = pathStrokeStyle(
@@ -123,14 +134,14 @@ def read_element(archive, gid_json, element) -> BaseElement:
                 )
 
             # fill
-            fill_id = abstract_path.get("fillId")
+            fill_id = abstract_path.get("fillId", stroke_style_id)
             if fill_id is not None:
                 gradient = get_json_element(gid_json, "fills", fill_id).get("gradient", {}).get("_0")
                 color: Dict = get_json_element(gid_json, "fills", fill_id).get("color", {}).get("_0")
 
                 if gradient is not None:
-                    # raise NotImplementedError("Gradient is not supported.")
-                    pass
+                    # TODO Add support for Gradient
+                    inkex.utils.debug(f"Gradient is not supported and will be ignored.")
                 elif color is not None:
                     fill = Color(color_dict=color)
 
@@ -154,7 +165,6 @@ def read_element(archive, gid_json, element) -> BaseElement:
                 compound_path = get_json_element(gid_json, "compoundPaths", compound_path_id)
 
                 # Path Geometries (subpath)
-                # TODO: pathGeometry should be classes
                 subpath_ids = compound_path.get("subpathIds")
                 if subpath_ids is not None:
                     for id in subpath_ids:
@@ -167,14 +177,15 @@ def read_element(archive, gid_json, element) -> BaseElement:
                 fill=fill,
                 fillId=fill_id,
                 strokeStyle=stroke_style,
-                pathGeometry=path_geometry_list,
+                pathGeometries=path_geometry_list,
                 **base_element_data
             )
 
         # Abstract Text (TextElement)
         abstract_text_id = stylable.get("subElement", {}).get("abstractText", {}).get("_0")
         if abstract_text_id is not None:
-            raise NotImplementedError("Text is not supported.")
+            # TODO Add support for Text
+            inkex.utils.debug(f"Text is not supported and will be ignored.")
         #     abstract_text = get_json_element(gid_json, "abstractTexts", abstract_text_id)
         #     text_id = abstract_text["textId"]
         #     styled_text_id = abstract_text["subElement"]["text"]["_0"]
@@ -186,13 +197,6 @@ def read_element(archive, gid_json, element) -> BaseElement:
         #     # styledTexts
         #     if styled_text_id is not None:
         #         element_result["styledText"] = get_json_element(gid_json, "styledTexts", styled_text_id)
-
-        #! singleStyle (NON-EXISTENT in latest format, found in fileVersion 21)
-        #single_style_id = stylable["subElement"]["singleStyle"]["_0"]
-        #if single_style_id is not None:
-        #    single_style = get_json_element(gid_json, "singleStyles", single_style_id)
-        #    element_result["singleStyle"] = single_style
-        #    # TODO Add singleStyles support later
 
     # Group (GroupElement)
     group_id = element.get("subElement", {}).get("group", {}).get("_0")
@@ -212,16 +216,6 @@ def read_element(archive, gid_json, element) -> BaseElement:
 
     # if the element is unknown type:
     return BaseElement(**base_element_data)
-
-
-def vectornator_to_artboard(gid_json):
-    """Reads Vectornator gid.json and returns Curve artboard."""
-    return {
-        "title": gid_json.get("title", "Untitled"),
-        "activeLayerIndex": gid_json.get("activeLayerIndex", 0),
-        "frame": gid_json.get("frame", {}),
-        "gid": gid_json.get("gid", "")
-    }
 
 
 def get_json_element(gid_json: Dict, list_key: str, index: int) -> Any:

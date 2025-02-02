@@ -26,7 +26,7 @@ class BaseElement:
     localTransform: localTransform
 
     @staticmethod
-    def blend_mode_to_svg(blendmode: int) -> str:
+    def blend_to_str(blendmode: int) -> str:
         """Returns value for mix-blend-mode attribute."""
         blend_mode_map = {
             0: "normal",
@@ -47,16 +47,16 @@ class BaseElement:
 
 @dataclass
 class ImageElement(BaseElement):
+    """holds imageData as base64 texts"""
     imageData: str
 
 
-# TODO WHAT WILL HAPPEN>>>????
 @dataclass
 class PathElement(BaseElement):
     fill: Optional[Color]
     fillId: Optional[int]
     strokeStyle: Optional[pathStrokeStyle]
-    pathGeometry: Dict
+    pathGeometries: List[pathGeometry]
 
 
 # No text for now
@@ -83,6 +83,7 @@ class Layer:
 
 @dataclass
 class Artboard:
+    """Linearity Curve Artboard"""
     title: str
     frame: Frame
     layers: List[Layer]
@@ -143,9 +144,41 @@ class localTransform:
 
 @dataclass
 class pathGeometry:
-    """path format in Linearity Curve."""
+    """path format in Linearity Curve(nodes)."""
     closed: bool
     nodes: List[Dict]
+
+    def parse_nodes(self) -> inkex.Path:
+        """Converts single pathGeometry data to inkex path."""
+        nodes = self.nodes
+        path = None
+
+        if self.closed:
+            nodes.append(nodes[0])
+
+        for node in nodes:
+            # Path data is stored as  list of [inPoint, anchor, outPoint]
+            # (plus some extra attributes for which we don't have enough data atm)
+
+            anchor = inkex.Vector2d(node["anchorPoint"])
+            if path is None:
+                path = inkex.Path([inkex.paths.Move(*anchor)])
+            else:
+                inpt = inkex.Vector2d(node["inPoint"])
+                anchor = inkex.Vector2d(node["anchorPoint"])
+
+                if prev.is_close(outpt) and inpt.is_close(anchor):
+                    path.append(inkex.paths.Line(anchor))
+                else:
+                    path.append(inkex.paths.Curve(outpt, inpt, anchor))
+
+            prev = anchor
+            outpt = inkex.Vector2d(node["outPoint"])
+
+        if self.closed:
+            path.append(inkex.paths.ZoneClose())
+
+        return path
 
 
 class Color:

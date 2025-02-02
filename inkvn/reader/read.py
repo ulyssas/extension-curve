@@ -7,18 +7,13 @@ Reads Linearity Curve files and convert them into intermediate data.
 
 import logging
 import zipfile
-from dataclasses import dataclass, field
-from typing import Any, Dict, List
+from typing import List
 
 from packaging import version
 
 import inkvn.reader.decode as d
 import inkvn.reader.extract as ext
-from inkvn.reader.datatypes import (
-    Artboard, BaseElement, Color, Frame, GroupElement,
-    ImageElement, Layer, PathElement, basicStrokeStyle,
-    localTransform, pathGeometry, pathStrokeStyle
-)
+from inkvn.reader.datatypes import Artboard
 
 
 class CurveReader:
@@ -26,6 +21,8 @@ class CurveReader:
     inkvn CurveReader
 
     A Linearity Curve file reader to convert Curve documents into dataclasses.
+
+    TODO: Implement format differences
     """
     def __init__(self, stream):
         self.archive = zipfile.ZipFile(stream, 'r')
