@@ -4,27 +4,27 @@ inkvn Converter
 Convert the intermediate data read by read.py
 """
 
-import base64
 from dataclasses import asdict
-from io import BytesIO
+
 from typing import Any, Dict, Optional, Tuple
 
 import inkex
 from inkex.base import SvgOutputMixin
-from PIL import Image
+import lxml.etree
 
 from inkvn.reader.datatypes import (
     Artboard, BaseElement, Color, Frame, GroupElement,
     ImageElement, Layer, PathElement, basicStrokeStyle,
     localTransform, pathGeometry, pathStrokeStyle
 )
-from inkvn.reader.read import CurveReader  # noqa: E402
+from inkvn.reader.read import CurveReader
 
 
 class CurveConverter():
     def __init__(self) -> None:
         self.reader: CurveReader
-        self.doc: inkex.SvgDocumentElement
+        self.doc: lxml.etree._ElementTree
+        self.document: inkex.SvgDocumentElement
 
     def convert(self, reader: CurveReader) -> None:
         self.reader = reader
@@ -35,13 +35,18 @@ class CurveConverter():
             width=target_artboard.frame.width,
             height=target_artboard.frame.height,
         )
-        svg = self.doc.getroot()
+        self.document = self.doc.getroot()
+
+        # Adding comments
+        comment = lxml.etree.Comment("Converted by extension-curve")
+        self.document.addprevious(comment)
+
         page = inkex.Page.new(**asdict(target_artboard.frame))  # includes x, y
-        svg.namedview.add(page)
+        self.document.namedview.add(page)
         page.set("inkscape:label", target_artboard.title)
 
         self.load_page(
-            svg.add(inkex.Layer.new(label=target_artboard.title)), target_artboard
+            self.document.add(inkex.Layer.new(label=target_artboard.title)), target_artboard
         )
         self.doc.getroot()
 
@@ -115,13 +120,16 @@ class CurveConverter():
         image.transform = image_element.localTransform.create_transform()
 
         # Image
-        img_format = self.detect_image_format(image_element.imageData)
+        img_format = image_element.image_format()
+        width, height = image_element.image_dimension()
 
         image.set("preserveAspectRatio", "none")
         image.set(
             inkex.addNS("href", "xlink"),
             f"data:image/{img_format.lower()};base64,{image_element.imageData}",
         )
+        image.set("width", width)
+        image.set("height", height)
 
         return image
 
@@ -167,7 +175,6 @@ class CurveConverter():
 
         # BaseElement
         path.label = base_element.name
-        # TODO blur
         path.style["opacity"] = base_element.opacity
         path.style["mix-blend-mode"] = base_element.blend_to_str(base_element.blendMode)
         path.style["display"] = "none" if base_element.isHidden else "inline"
@@ -196,43 +203,3 @@ class CurveConverter():
         elem.style["fill-opacity"] = fill.alpha
         elem.style["fill-rule"] = "nonzero"
 
-    # def create_svg_image(image_element):
-    #    """
-    #    Converts an element defined in VI Decoders.traverse_element() to an SVG image.
-    #    """
-    #    image = image_element.get("imageData", "")  # b64 data
-    #    transform = image_element.get("localTransform")
-    #    img_format, _, _ = detect_image_format_and_size(image)
-
-    #    # Create style attribute
-    #    style_parts = [
-    #        f"display:{'none' if image_element.get('isHidden') else 'inline'}",
-    #        f"mix-blend-mode:{sp.blend_to_str(image_element.get('blendMode', 1))}",
-    #        f"opacity:{image_element.get('opacity', 1)}",
-    #    ]
-    #    style = ";".join(style_parts)
-
-    #    attributes = {
-    #        "id": image_element.get("name"),
-    #        "preserveAspectRatio": "none",
-    #        "transform": tp.create_group_transform(transform),
-    #        "style": style,
-    #        "xlink:href": f"data:image/{str(img_format).lower()};base64,{image}"
-    #    }
-
-    #    # no gradient unlike create_svg_path
-    #    return ET.Element("image", attributes), None
-
-    @staticmethod
-    def detect_image_format(base64_image):
-        """Detect the image format of b64 encoded image."""
-        # Decode Base64 image and convert to binary
-        binary_data = base64.b64decode(base64_image)
-
-        # Load image in Pillow
-        image = Image.open(BytesIO(binary_data))
-
-        # Get image format（JPEG, PNG） and dimension
-        image_format = image.format
-
-        return image_format

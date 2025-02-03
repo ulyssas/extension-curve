@@ -24,6 +24,7 @@ class CurveReader:
 
     TODO: Implement format differences
     """
+
     def __init__(self, stream):
         self.archive = zipfile.ZipFile(stream, 'r')
         self.artboards: List[Artboard] = []
@@ -52,18 +53,15 @@ class CurveReader:
 
         # if the file is Linearity Curve
         if self.check_if_curve(version):
-            print(f"Supported version: {version}.")
-
-            # TODO: loading function should be here
-            #artboard = gid_json.get("artboards")[0]
-            artboard = d.read_artboard(self.archive, gid_json) # will be like this
+            # inkex.utils.debug(f"Curve version: {version}.")
+            artboard = d.read_artboard(self.archive, gid_json)
             self.artboards.append(artboard)
 
-            # raise ValueError(f"{artboard}") # I don't know how to print with Inkscape
-        # if the file is Vectornator or older Curve
+        # if the file is Vectornator
         else:
             # Does not work yet
-            raise ValueError(f"Unsupported version: {version}. Version 5.0.0 or up is required.")
+            raise NotImplementedError(
+                f"Vectornator version: {version}. Vectornator is not supported at this point.")
 
     @staticmethod
     def check_if_curve(input_version: str):

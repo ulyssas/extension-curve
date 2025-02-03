@@ -18,8 +18,8 @@ HERE = os.path.dirname(__file__) or "."
 sys.path.insert(0, os.path.abspath(os.path.join(HERE, "..")))
 
 
-from inkvn.reader.read import CurveReader  # noqa: E402
-from inkvn.svg.convert import CurveConverter  # noqa: E402
+from inkvn.reader.read import CurveReader
+from inkvn.svg.convert import CurveConverter
 
 
 class CurveInput(inkex.InputExtension):

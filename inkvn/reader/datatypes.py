@@ -6,12 +6,15 @@ Intermediate data format in inkvn
 
 from __future__ import annotations
 
+import base64
 import colorsys
 import math
 from dataclasses import dataclass, field
+from io import BytesIO
 from typing import Dict, List, Optional, Tuple
 
 import inkex
+from PIL import Image
 
 
 @dataclass
@@ -49,6 +52,18 @@ class BaseElement:
 class ImageElement(BaseElement):
     """holds imageData as base64 texts"""
     imageData: str
+
+    def image_format(self) -> str:
+        """Detect the image format of b64 encoded image."""
+        binary_data = base64.b64decode(self.imageData)
+        image = Image.open(BytesIO(binary_data))
+        return image.format
+
+    def image_dimension(self) -> Tuple[int, int]:
+        """Detect the dimension format of b64 encoded image."""
+        binary_data = base64.b64decode(self.imageData)
+        image = Image.open(BytesIO(binary_data))
+        return image.width, image.height
 
 
 @dataclass

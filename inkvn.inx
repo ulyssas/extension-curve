@@ -2,14 +2,14 @@
 
 <inkscape-extension xmlns="http://www.inkscape.org/namespace/inkscape/extension">
   <name>Curve Input</name>
-  <id>org.inkscape.input.curve_input</id>
+  <id>org.inkscape.input.vectornator_input</id>
 
-  <!-- .curve -->
+  <!-- .vectornator -->
   <input>
-    <extension>.curve</extension>
-    <mimetype>application/x-extension-curve</mimetype>
-    <filetypename>Linearity Curve file (*.curve)</filetypename>
-    <filetypetooltip>Import a Linearity Curve file</filetypetooltip>
+    <extension>.vectornator</extension>
+    <mimetype>application/x-extension-vectornator</mimetype>
+    <filetypename>Vectornator file (*.vectornator)</filetypename>
+    <filetypetooltip>Import a Vectornator file</filetypetooltip>
   </input>
 
   <script>

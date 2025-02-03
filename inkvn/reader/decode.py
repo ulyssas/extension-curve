@@ -104,10 +104,10 @@ def read_element(archive, gid_json, element) -> BaseElement:
 
         # will be used to return PathElement
         fill = None
-        fill_id: int = None
+        fill_id = None
         stroke_style = None
-        stroke_style_id: int = None
-        abstract_path_id: int = None
+        stroke_style_id = None
+        abstract_path_id = None
 
         # ! singleStyles compatibility (NOT TESTED AT ALL), based on Curve 5.1.2
         single_style_id = stylable.get("subElement", {}).get("singleStyle", {}).get("_0")
@@ -119,12 +119,15 @@ def read_element(archive, gid_json, element) -> BaseElement:
             abstract_path_id = single_style.get("subElement")
 
         # Abstract Path (PathElement)
-        abstract_path_id = stylable.get("subElement", {}).get("abstractPath", {}).get("_0", abstract_path_id)
+        sub_element = stylable.get("subElement", {})
+        if "abstractPath" in sub_element:
+            abstract_path_id = sub_element["abstractPath"].get("_0")
         if abstract_path_id is not None:
             abstract_path = get_json_element(gid_json, "abstractPaths", abstract_path_id)
 
             # Stroke Style
-            stroke_style_id = abstract_path.get("strokeStyleId", stroke_style_id)
+            if "strokeStyleId" in abstract_path:
+                stroke_style_id = abstract_path["strokeStyleId"]
             if stroke_style_id is not None:
                 stroke_style = get_json_element(gid_json, "pathStrokeStyles", stroke_style_id)
                 stroke_style = pathStrokeStyle(
@@ -134,14 +137,15 @@ def read_element(archive, gid_json, element) -> BaseElement:
                 )
 
             # fill
-            fill_id = abstract_path.get("fillId", stroke_style_id)
+            if "fillId" in abstract_path:
+                fill_id = abstract_path["fillId"]
             if fill_id is not None:
                 gradient = get_json_element(gid_json, "fills", fill_id).get("gradient", {}).get("_0")
                 color: Dict = get_json_element(gid_json, "fills", fill_id).get("color", {}).get("_0")
 
                 if gradient is not None:
                     # TODO Add support for Gradient
-                    inkex.utils.debug(f"Gradient is not supported and will be ignored.")
+                    inkex.utils.debug(f'{base_element_data["name"]}: Gradient is not supported and will be ignored.')
                 elif color is not None:
                     fill = Color(color_dict=color)
 
@@ -185,7 +189,7 @@ def read_element(archive, gid_json, element) -> BaseElement:
         abstract_text_id = stylable.get("subElement", {}).get("abstractText", {}).get("_0")
         if abstract_text_id is not None:
             # TODO Add support for Text
-            inkex.utils.debug(f"Text is not supported and will be ignored.")
+            inkex.utils.debug(f'{base_element_data["name"]}: Text is not supported and will be ignored.')
         #     abstract_text = get_json_element(gid_json, "abstractTexts", abstract_text_id)
         #     text_id = abstract_text["textId"]
         #     styled_text_id = abstract_text["subElement"]["text"]["_0"]
