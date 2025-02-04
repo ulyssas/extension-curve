@@ -27,6 +27,7 @@ class CurveReader:
 
     def __init__(self, stream):
         self.archive = zipfile.ZipFile(stream, 'r')
+        self.file_version: int = 44 # main support
         self.artboards: List[Artboard] = []
 
         self.read()
@@ -38,7 +39,7 @@ class CurveReader:
 
         units = drawing_data["settings"]["units"]
         version = document["appVersion"]
-        file_version = manifest["fileFormatVersion"]
+        self.file_version = manifest["fileFormatVersion"]
         artboard_paths = drawing_data["artboardPaths"]
 
         assert len(artboard_paths), "No artboard paths found in the document."
@@ -46,7 +47,7 @@ class CurveReader:
         # will be used later (as Inkscape attribute)
         print(f"Unit: {units}")
 
-        # Step 5: Read Artboard (GUID JSON)
+        # Read Artboard (GUID JSON)
         # If there's multiple artboards, only the first will be exported(FOR NOW).
         # TODO: Add multiple artboard support
         gid_json = ext.extract_gid_json(self.archive, artboard_paths[0])

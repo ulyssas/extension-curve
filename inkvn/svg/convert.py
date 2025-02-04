@@ -23,11 +23,26 @@ from inkvn.reader.read import CurveReader
 class CurveConverter():
     def __init__(self) -> None:
         self.reader: CurveReader
+        self.target_version: int
+        self.has_transform_applied: bool
         self.doc: lxml.etree._ElementTree
         self.document: inkex.SvgDocumentElement
 
     def convert(self, reader: CurveReader) -> None:
         self.reader = reader
+
+        """
+        file version check
+
+        New curve holds path data without transforms
+        However, old curve has transforms already applied.
+        I don't know exactly when the behavior has changed, so it's set to 44
+        """
+        if reader.file_version < 44:
+            self.has_transform_applied = True
+        else:
+            self.has_transform_applied = False
+
         target_artboard = reader.artboards[0]
 
         # TODO: @Convert fix for multiple artboards
@@ -96,7 +111,8 @@ class CurveConverter():
         group.style["display"] = "none" if group_element.isHidden else "inline"
         if group_element.isLocked:
             group.set("sodipodi:insensitive", "true")
-        group.transform = group_element.localTransform.create_transform()
+        if not self.has_transform_applied:
+            group.transform = group_element.localTransform.create_transform()
 
         for child in group_element.groupElements:
             svg_element = self.load_element(child)
@@ -117,7 +133,10 @@ class CurveConverter():
         image.style["display"] = "none" if image_element.isHidden else "inline"
         if image_element.isLocked:
             image.set("sodipodi:insensitive", "true")
-        image.transform = image_element.localTransform.create_transform()
+        if not self.has_transform_applied:
+            image.transform = image_element.localTransform.create_transform()
+        elif image_element.transform:
+            image.transform = image_element.transform
 
         # Image
         img_format = image_element.image_format()
@@ -141,10 +160,12 @@ class CurveConverter():
         if path_element.pathGeometries:
             for path_geometry in path_element.pathGeometries:
                 path.path += path_geometry.parse_nodes()
-        path.transform = path_element.localTransform.create_transform()
 
-        # Apply Transform
-        path = inkex.PathElement.new(path.get_path().transform(path.transform))
+        if not self.has_transform_applied:
+            path.transform = path_element.localTransform.create_transform()
+
+            # Apply Transform
+            path = inkex.PathElement.new(path.get_path().transform(path.transform))
 
         # BaseElement
         path.label = path_element.name

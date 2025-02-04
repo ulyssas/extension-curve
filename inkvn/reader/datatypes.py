@@ -50,8 +50,13 @@ class BaseElement:
 
 @dataclass
 class ImageElement(BaseElement):
-    """holds imageData as base64 texts"""
+    """
+    Holds imageData as base64 texts.
+
+    transform contains matrix (old format).
+    """
     imageData: str
+    transform: Optional[List[float]]
 
     def image_format(self) -> str:
         """Detect the image format of b64 encoded image."""
@@ -230,11 +235,24 @@ class Color:
             r, g, b, a = self._rgba_to_tuple(rgba)
         elif hsba:
             r, g, b, a = self._hsba_to_rgba_tuple(hsba)
+        # Check for legacy HSB format
+        elif "h" in color_dict and "s" in color_dict and "b" in color_dict:
+            r, g, b, a = self._legacy_hsba_to_rgba_tuple(color_dict)
         else:
             return None
 
         hex_color = self._rgba_to_hex((r, g, b, a))
         return hex_color, a
+
+    def _legacy_hsba_to_rgba_tuple(self, hsba: Dict) -> Tuple[float, float, float, float]:
+        """Converts an HSBA color to RGBA format."""
+        hue = hsba.get("h", 0)
+        saturation = hsba.get("s", 0)
+        brightness = hsba.get("b", 0)
+        alpha = hsba.get("a", 1)
+
+        r, g, b = colorsys.hsv_to_rgb(hue, saturation, brightness)
+        return r, g, b, alpha
 
     def _hsba_to_rgba_tuple(self, hsba: Dict) -> Tuple[float, float, float, float]:
         """Converts an HSBA color to RGBA format."""

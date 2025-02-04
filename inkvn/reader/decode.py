@@ -6,7 +6,7 @@ converts Linearity Curve (5.18) JSON data to inkvn.
 Only tested for fileFormatVersion 44.
 """
 
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 import inkex
 
@@ -91,11 +91,17 @@ def read_element(archive, gid_json, element) -> BaseElement:
     if image_id is not None:
         # relativePath contains *.dat (bitmap data)
         # sharedFileImage doesn't exist in 5.1.1 (file version 21) document
-        # TODO: Add support for older files
-        image = get_json_element(gid_json, "images", image_id)["imageData"]["sharedFileImage"]["_0"]
-        image_file = get_json_element(gid_json, "imageDatas", image)["relativePath"]
+        image = get_json_element(gid_json, "images", image_id)
+        transform = None
+
+        image_data_id = image.get("imageData", {}).get("sharedFileImage", {}).get("_0")
+        if image_data_id is None: # legacy image
+            image_data_id = image.get("imageDataId")
+            transform = image.get("transform")
+
+        image_file = get_json_element(gid_json, "imageDatas", image_data_id)["relativePath"]
         image_data = ext.read_dat_from_zip(archive, image_file)
-        return ImageElement(imageData=image_data, **base_element_data)
+        return ImageElement(imageData=image_data, transform=transform, **base_element_data)
 
     # Stylable (either PathElement or TextElement)
     stylable_id = element.get("subElement", {}).get("stylable", {}).get("_0")
@@ -130,6 +136,17 @@ def read_element(archive, gid_json, element) -> BaseElement:
                 stroke_style_id = abstract_path["strokeStyleId"]
             if stroke_style_id is not None:
                 stroke_style = get_json_element(gid_json, "pathStrokeStyles", stroke_style_id)
+
+                if stroke_style is None:  # Try legacy "strokeStyles" if not found
+                    stroke_style = get_json_element(gid_json, "strokeStyles", stroke_style_id)
+
+                if "dashPattern" in stroke_style and "join" in stroke_style and "cap" in stroke_style:
+                    stroke_style["basicStrokeStyle"] = {
+                        "cap": stroke_style["cap"],
+                        "dashPattern": stroke_style["dashPattern"],
+                        "join": stroke_style["join"],
+                        "position": stroke_style["position"]
+                    }
                 stroke_style = pathStrokeStyle(
                     basicStrokeStyle=basicStrokeStyle(**stroke_style["basicStrokeStyle"]),
                     color=Color(color_dict=stroke_style["color"]),
@@ -222,8 +239,12 @@ def read_element(archive, gid_json, element) -> BaseElement:
     return BaseElement(**base_element_data)
 
 
-def get_json_element(gid_json: Dict, list_key: str, index: int) -> Any:
-    """Get an attribute according to key and index from gid_json."""
-    elements = gid_json[list_key]
-    return elements[index]
+def get_json_element(json_data: Dict, list_key: str, index: str) -> Optional[Dict]:
+    """Retrieve an attribute according to key and index from gid_json."""
 
+    elements = json_data.get(list_key)
+
+    if elements is None: # return None if the top-level key doesn't exist.
+        return None
+
+    return elements[index]
