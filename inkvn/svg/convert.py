@@ -27,6 +27,8 @@ class CurveConverter():
         self.has_transform_applied: bool
         self.doc: lxml.etree._ElementTree
         self.document: inkex.SvgDocumentElement
+        self.offset_x: float
+        self.offset_y: float
 
     def convert(self, reader: CurveReader) -> None:
         self.reader = reader
@@ -43,12 +45,11 @@ class CurveConverter():
         else:
             self.has_transform_applied = False
 
-        target_artboard = reader.artboards[0]
+        first_artboard = reader.artboards[0]
 
-        # TODO: @Convert fix for multiple artboards
         self.doc = SvgOutputMixin.get_template(
-            width=target_artboard.frame.width,
-            height=target_artboard.frame.height,
+            width=first_artboard.frame.width,
+            height=first_artboard.frame.height,
         )
         self.document = self.doc.getroot()
 
@@ -56,17 +57,36 @@ class CurveConverter():
         comment = lxml.etree.Comment("Converted by extension-curve")
         self.document.addprevious(comment)
 
-        page = inkex.Page.new(**asdict(target_artboard.frame))  # includes x, y
-        self.document.namedview.add(page)
-        page.set("inkscape:label", target_artboard.title)
+        # first artboard becomes the front page
+        self.offset_x = first_artboard.frame.x
+        self.offset_y = first_artboard.frame.y
 
-        self.load_page(
-            self.document.add(inkex.Layer.new(label=target_artboard.title)), target_artboard
-        )
-        self.doc.getroot()
+        for target_artboard in reader.artboards:
+            page = inkex.Page.new(
+                width=target_artboard.frame.width,
+                height=target_artboard.frame.height,
+                x=target_artboard.frame.x - self.offset_x,
+                y=target_artboard.frame.y - self.offset_y,
+            )
+            self.document.namedview.add(page)
+            page.set("inkscape:label", target_artboard.title)
+
+            self.load_page(
+                self.document.add(inkex.Layer.new(label=target_artboard.title)), target_artboard
+            )
+            self.doc.getroot()
 
     def load_page(self, root_layer: inkex.Layer, artboard: Artboard) -> None:
         """Convert inkvn artboard to inkex page."""
+
+        # artboards have translations
+        tr = inkex.transforms.Transform()
+        tr.add_translate(
+            artboard.frame.x - self.offset_x,
+            artboard.frame.y - self.offset_y
+        )
+        root_layer.transform = tr
+
         # layers in the artboard
         for layer in artboard.layers:
             parent = root_layer.add(inkex.Layer.new(layer.name))

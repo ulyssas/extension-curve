@@ -47,21 +47,20 @@ class CurveReader:
         print(f"Unit: {units}")
 
         # Read Artboard (GUID JSON)
-        # If there's multiple artboards, only the first will be exported(FOR NOW).
-        # TODO: Add multiple artboard support
-        gid_json = ext.extract_gid_json(self.archive, artboard_paths[0])
+        for artboard_path in artboard_paths:
+            gid_json = ext.extract_gid_json(self.archive, artboard_path)
 
-        # if the file is Linearity Curve
-        if self.check_if_curve(version):
-            # inkex.utils.debug(f"Curve version: {version}.")
-            artboard = d.read_artboard(self.archive, gid_json)
-            self.artboards.append(artboard)
+            # if the file is Linearity Curve
+            if self.check_if_curve(version):
+                # inkex.utils.debug(f"Curve version: {version}.")
+                artboard = d.read_artboard(self.archive, gid_json)
+                self.artboards.append(artboard)
 
-        # if the file is Vectornator
-        else:
-            # inkex.utils.debug(f"Legacy Curve / Vectornator version: {version}.")
-            artboard = dvn.read_artboard(self.archive, gid_json)
-            self.artboards.append(artboard)
+            # if the file is Vectornator
+            else:
+                # inkex.utils.debug(f"Legacy Curve / Vectornator version: {version}.")
+                artboard = dvn.read_artboard(self.archive, gid_json)
+                self.artboards.append(artboard)
 
     @staticmethod
     def check_if_curve(input_version: str):
