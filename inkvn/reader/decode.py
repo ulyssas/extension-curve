@@ -115,7 +115,7 @@ def read_element(archive, gid_json, element) -> BaseElement:
         stroke_style_id = None
         abstract_path_id = None
 
-        # ! singleStyles compatibility (NOT TESTED AT ALL), based on Curve 5.1.2
+        # singleStyles (based on Curve 5.1.2)
         single_style_id = stylable.get("subElement", {}).get("singleStyle", {}).get("_0")
         if single_style_id is not None:
             single_style = get_json_element(gid_json, "singleStyles", single_style_id)
@@ -196,7 +196,6 @@ def read_element(archive, gid_json, element) -> BaseElement:
 
             return PathElement(
                 fill=fill,
-                fillId=fill_id,
                 strokeStyle=stroke_style,
                 pathGeometries=path_geometry_list,
                 **base_element_data

@@ -12,6 +12,7 @@ from typing import List
 from packaging import version
 
 import inkvn.reader.decode as d
+import inkvn.reader.decode_vn as dvn
 import inkvn.reader.extract as ext
 from inkvn.reader.datatypes import Artboard
 
@@ -21,8 +22,6 @@ class CurveReader:
     inkvn CurveReader
 
     A Linearity Curve file reader to convert Curve documents into dataclasses.
-
-    TODO: Implement format differences
     """
 
     def __init__(self, stream):
@@ -60,14 +59,14 @@ class CurveReader:
 
         # if the file is Vectornator
         else:
-            # Does not work yet
-            raise NotImplementedError(
-                f"Vectornator version: {version}. Vectornator is not supported at this point.")
+            # inkex.utils.debug(f"Legacy Curve / Vectornator version: {version}.")
+            artboard = dvn.read_artboard(self.archive, gid_json)
+            self.artboards.append(artboard)
 
     @staticmethod
     def check_if_curve(input_version: str):
         """check if the file version is 5.x or not"""
-        required_version = version.parse("5.0.0")
+        required_version = version.parse("5.0.3")
         try:
             current_version = version.parse(input_version)
         except version.InvalidVersion:

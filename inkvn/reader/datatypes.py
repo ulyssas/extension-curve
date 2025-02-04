@@ -26,7 +26,7 @@ class BaseElement:
     blendMode: int
     isHidden: bool
     isLocked: bool
-    localTransform: localTransform
+    localTransform: Optional[localTransform]
 
     @staticmethod
     def blend_to_str(blendmode: int) -> str:
@@ -74,7 +74,6 @@ class ImageElement(BaseElement):
 @dataclass
 class PathElement(BaseElement):
     fill: Optional[Color]
-    fillId: Optional[int]
     strokeStyle: Optional[pathStrokeStyle]
     pathGeometries: List[pathGeometry]
 

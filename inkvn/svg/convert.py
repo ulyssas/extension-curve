@@ -111,7 +111,7 @@ class CurveConverter():
         group.style["display"] = "none" if group_element.isHidden else "inline"
         if group_element.isLocked:
             group.set("sodipodi:insensitive", "true")
-        if not self.has_transform_applied:
+        if not self.has_transform_applied and group_element.localTransform:
             group.transform = group_element.localTransform.create_transform()
 
         for child in group_element.groupElements:
@@ -133,7 +133,7 @@ class CurveConverter():
         image.style["display"] = "none" if image_element.isHidden else "inline"
         if image_element.isLocked:
             image.set("sodipodi:insensitive", "true")
-        if not self.has_transform_applied:
+        if not self.has_transform_applied and image_element.localTransform:
             image.transform = image_element.localTransform.create_transform()
         elif image_element.transform:
             image.transform = image_element.transform
@@ -161,7 +161,7 @@ class CurveConverter():
             for path_geometry in path_element.pathGeometries:
                 path.path += path_geometry.parse_nodes()
 
-        if not self.has_transform_applied:
+        if not self.has_transform_applied and path_element.localTransform:
             path.transform = path_element.localTransform.create_transform()
 
             # Apply Transform
@@ -192,6 +192,8 @@ class CurveConverter():
 
     def convert_base(self, base_element: BaseElement) -> inkex.PathElement:
         """Converts a BaseElement to an empty SVG path (inkex.PathElement)."""
+        inkex.utils.debug(f'{base_element.name}: This element will be imported as empty path.')
+
         path = inkex.PathElement()
 
         # BaseElement
