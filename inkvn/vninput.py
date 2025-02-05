@@ -1,11 +1,14 @@
 """
 inkvn (extension-curve) (2025/1/21)
 
-description: Linearity Curve file importer with fileVersion 44
+description: Linearity Curve / Vectornator file importer for Inkscape
 
-! what DOESN'T work (2025/02/05): Gradient, Blur, Text, mask, guide
+! what DOESN'T work (2025/02/05): Blur, Text, mask, guide
+! and other features I missed
 """
 
+from inkvn.svg.convert import CurveConverter
+from inkvn.reader.read import CurveReader
 import os
 import sys
 
@@ -16,18 +19,8 @@ HERE = os.path.dirname(__file__) or "."
 sys.path.insert(0, os.path.abspath(os.path.join(HERE, "..")))
 
 
-from inkvn.reader.read import CurveReader
-from inkvn.svg.convert import CurveConverter
-
-
 class CurveInput(inkex.InputExtension):
-    """
-    Open and convert Linearity Curve (.curve) files.
-
-    Vectornator (.vectornator) file is not supported.
-
-    You can upgrade file format by opening vectornator file in Linearity Curve, then export as .curve.
-    """
+    """Open and convert .curve and .vectornator files."""
 
     # copied from inkaf
     def load(self, stream):

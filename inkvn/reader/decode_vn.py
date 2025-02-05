@@ -12,7 +12,7 @@ import inkex
 
 import inkvn.reader.extract as ext
 from inkvn.reader.datatypes import (
-    Artboard, BaseElement, Color, Frame, GroupElement,
+    Artboard, BaseElement, Color, Frame, GroupElement, Gradient,
     ImageElement, Layer, PathElement, basicStrokeStyle,
     localTransform, pathGeometry, pathStrokeStyle
 )
@@ -111,33 +111,57 @@ def read_element(archive, gid_json, element) -> BaseElement:
             )
 
         # fill
-        fill = None
+        fill_color = None
+        fill_gradient = None
         fill_data = stylable.get("fill")
         fill_color = stylable.get("fillColor")
         fill_gradient = stylable.get("fillGradient")
         if fill_data:
             gradient: Dict = fill_data.get("gradient", {}).get("_0")
             color: Dict = fill_data.get("color", {}).get("_0")
-            if gradient:
-                # TODO Add support for Gradient
-                inkex.utils.debug(f'{base_element_data["name"]}: Gradient is not supported and will be ignored.')
-            elif color:
-                fill = Color(color_dict=color)
 
+            # Vectornator 4.13.2, format 13
+            if gradient is not None:
+                fill_gradient = Gradient(
+                    start_end=stylable["fillTransform"],
+                    transform_matrix=stylable["fillTransform"]["transform"],
+                    stops=gradient["stops"],
+                    typeRawValue=gradient["typeRawValue"]
+                )
+            elif color:
+                fill_color = Color(color_dict=color)
+
+        # Vectornator 4.10.4, format 8
         elif fill_color or fill_gradient:
             if fill_gradient:
-                inkex.utils.debug(f'{base_element_data["name"]}: Gradient is not supported and will be ignored.')
+                #inkex.utils.debug(f'{base_element_data["name"]}: Gradient is not supported and will be ignored.')
+                fill_gradient = Gradient(
+                    start_end=stylable["fillTransform"],
+                    transform_matrix=stylable["fillTransform"]["transform"],
+                    stops=fill_gradient["stops"],
+                    typeRawValue=fill_gradient["typeRawValue"]
+                )
             elif fill_color:
-                fill = Color(color_dict=fill_color)
+                fill_color = Color(color_dict=fill_color)
 
-        # singleStyles
+        # singleStyles (Vectornator 4.13.6, format 19)
         abstract_path = None
         single_style = stylable.get("subElement", {}).get("singleStyle", {}).get("_0")
         if single_style is not None:
             fill_data = single_style.get("fill")
             if fill_data:
                 color: Dict = fill_data.get("color", {}).get("_0")
-                fill = Color(color_dict=color)
+                gradient: Dict = fill_data.get("gradient", {}).get("_0")
+
+                if gradient is not None:
+                    fill_gradient = Gradient(
+                        start_end=stylable["fillTransform"],
+                        transform_matrix=stylable["fillTransform"]["transform"],
+                        stops=gradient["stops"],
+                        typeRawValue=gradient["typeRawValue"]
+                    )
+                elif color:
+                    fill_color = Color(color_dict=color)
 
             # use single_style as abstract path
             abstract_path = single_style.get("subElement")
@@ -176,10 +200,16 @@ def read_element(archive, gid_json, element) -> BaseElement:
                 subpaths = compound_path_data.get("subpaths")
                 if subpaths is not None:
                     for sub_element in subpaths:
-                        sub_stylable = sub_element["subElement"]["stylable"]["_0"]
                         # ! this "abstractPath" could be singleStyle
                         # ! I need more Vectornator document to confirm this
-                        sub_path = sub_stylable["subElement"]["abstractPath"]["_0"]["subElement"]["pathData"]["_0"]
+                        sub_stylable = sub_element.get("subElement", {}).get("stylable", {}).get("_0")
+                        if sub_stylable is not None:
+                            sub_path = sub_stylable["subElement"]["abstractPath"]["_0"]["subElement"]["pathData"]["_0"]
+
+                        # else (Vectornator 4.13.6, format 19)
+                        else:
+                            sub_path = sub_element
+
                         path_geometry = pathGeometry(
                             closed=sub_path["closed"],
                             nodes=sub_path["nodes"]
@@ -187,7 +217,8 @@ def read_element(archive, gid_json, element) -> BaseElement:
                         path_geometry_list.append(path_geometry)
 
             return PathElement(
-                fill=fill,
+                fillColor=fill_color,
+                fillGradient=fill_gradient,
                 strokeStyle=stroke_style,
                 pathGeometries=path_geometry_list,
                 **base_element_data

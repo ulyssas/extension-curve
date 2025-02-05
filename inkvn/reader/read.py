@@ -1,7 +1,7 @@
 """
 inkvn Reader
 
-Reads Linearity Curve files and convert them into intermediate data.
+Reads Linearity Curve / Vectornator files and convert them into intermediate data.
 """
 
 
@@ -21,7 +21,7 @@ class CurveReader:
     """
     inkvn CurveReader
 
-    A Linearity Curve file reader to convert Curve documents into dataclasses.
+    A Linearity Curve / Vectornator file reader to convert Curve documents into dataclasses.
     """
 
     def __init__(self, stream):
@@ -64,7 +64,7 @@ class CurveReader:
 
     @staticmethod
     def check_if_curve(input_version: str):
-        """check if the file version is 5.x or not"""
+        """check if the app version is 5.x or not"""
         required_version = version.parse("5.0.3")
         try:
             current_version = version.parse(input_version)

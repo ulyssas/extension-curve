@@ -11,7 +11,7 @@ import colorsys
 import math
 from dataclasses import dataclass, field
 from io import BytesIO
-from typing import Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 import inkex
 from PIL import Image
@@ -74,7 +74,8 @@ class ImageElement(BaseElement):
 @dataclass
 class PathElement(BaseElement):
     """Path Element properties."""
-    fill: Optional[Color]
+    fillColor: Optional[Color]
+    fillGradient: Optional[Gradient]
     strokeStyle: Optional[pathStrokeStyle]
     pathGeometries: List[pathGeometry]
 
@@ -285,6 +286,68 @@ class Color:
         return f"#{r:02X}{g:02X}{b:02X}"
 
 
+class Gradient:
+    def __init__(
+        self, start_end: Dict[str, Any], transform_matrix: Optional[List[float]],
+        stops: List[Dict], typeRawValue: int
+    ):
+        """
+        Initializes the Gradient object from a Linearity Curve data.
+        """
+        self.gradient: inkex.Gradient = self.convert_gradient(
+            tr=start_end,
+            stops=stops,
+            type_value=typeRawValue
+        )
+        self.transform: Optional[inkex.transforms.Transform] = None
+        tr = inkex.transforms.Transform()
+        if transform_matrix:
+            tr.add_matrix(transform_matrix)
+            self.transform = tr
+
+    @staticmethod
+    def convert_gradient(
+        tr: Dict[str, Any], stops: List[Dict], type_value: int
+    ) -> inkex.Gradient:
+        if type_value == 0:  # Linear Gradient
+            gradient = inkex.LinearGradient()
+            gradient.set("x1", tr['start'][0])
+            gradient.set("y1", tr['start'][1])
+            gradient.set("x2", tr['end'][0])
+            gradient.set("y2", tr['end'][1])
+
+        elif type_value == 1:  # Radial Gradient
+            cx, cy = tr['start']
+            fx, fy = tr['end']
+
+            # Calculate radius (r) from start and end points. ??
+            r = ((fx - cx)**2 + (fy - cy)**2)**0.5
+
+            gradient = inkex.RadialGradient()
+            gradient.set("cx", cx)
+            gradient.set("cy", cy)
+            gradient.set("r", r)
+
+        gradient.set("gradientUnits", "userSpaceOnUse")
+
+        # Add color stops
+        for stop in stops:
+            color = Color(color_dict=stop["color"])
+            ratio = stop["ratio"]
+
+            svg_stop = inkex.Stop()
+            svg_stop.set("offset", ratio)
+            svg_stop.style = inkex.Style(
+                {
+                    "stop-color": color.hex,
+                    "stop-opacity": color.alpha,
+                }
+            )
+            gradient.append(svg_stop)
+
+        return gradient
+
+
 @dataclass
 class pathStrokeStyle:
     basicStrokeStyle: basicStrokeStyle
@@ -295,9 +358,20 @@ class pathStrokeStyle:
 class basicStrokeStyle:
     def __init__(self, cap: int, dashPattern: Optional[List[float]], join: int, position: int):
         self.cap: str = self.cap_to_svg(cap)
-        self.dashPattern: List[float] = dashPattern if dashPattern is not None else [0, 0, 0, 0]
+        self.dashPattern: List[float] = self._process_dash_pattern(dashPattern)
         self.join: str = self.join_to_svg(join)
         self.position: int = position
+
+    @staticmethod
+    def _process_dash_pattern(dashPattern: Optional[List[float]]) -> List[float]:
+        if dashPattern is None:
+            return [0]
+
+        # delete trailing zeros
+        while len(dashPattern) > 1 and dashPattern[-1] == 0:
+            dashPattern.pop()
+
+        return dashPattern
 
     @staticmethod
     def cap_to_svg(cap):

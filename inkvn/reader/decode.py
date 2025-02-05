@@ -12,7 +12,7 @@ import inkex
 
 import inkvn.reader.extract as ext
 from inkvn.reader.datatypes import (
-    Artboard, BaseElement, Color, Frame, GroupElement,
+    Artboard, BaseElement, Color, Frame, GroupElement, Gradient,
     ImageElement, Layer, PathElement, basicStrokeStyle,
     localTransform, pathGeometry, pathStrokeStyle
 )
@@ -109,7 +109,8 @@ def read_element(archive, gid_json, element) -> BaseElement:
         stylable = get_json_element(gid_json, "stylables", stylable_id)
 
         # will be used to return PathElement
-        fill = None
+        fill_color = None
+        fill_gradient = None
         fill_id = None
         stroke_style = None
         stroke_style_id = None
@@ -161,10 +162,26 @@ def read_element(archive, gid_json, element) -> BaseElement:
                 color: Dict = get_json_element(gid_json, "fills", fill_id).get("color", {}).get("_0")
 
                 if gradient is not None:
-                    # TODO Add support for Gradient
-                    inkex.utils.debug(f'{base_element_data["name"]}: Gradient is not supported and will be ignored.')
+                    # Newer Curve
+                    if gradient.get("transform") is not None:
+                        fill_gradient = Gradient(
+                            start_end=gradient["transform"],
+                            transform_matrix=None,
+                            stops=gradient["gradient"]["stops"],
+                            typeRawValue=gradient["gradient"]["typeRawValue"]
+                        )
+                    # Old Curve like 5.1.1
+                    else:
+                        fill_transform_id = stylable.get("fillTransformId")
+                        fill_transform = get_json_element(gid_json, "fillTransforms", fill_transform_id)
+                        fill_gradient = Gradient(
+                            start_end=fill_transform,
+                            transform_matrix=fill_transform["transform"],
+                            stops=gradient["stops"],
+                            typeRawValue=gradient["typeRawValue"]
+                        )
                 elif color is not None:
-                    fill = Color(color_dict=color)
+                    fill_color = Color(color_dict=color)
 
             # Path
             path_id = abstract_path.get("subElement", {}).get("path", {}).get("_0")
@@ -195,7 +212,8 @@ def read_element(archive, gid_json, element) -> BaseElement:
                         path_geometry_list.append(path_geometry)
 
             return PathElement(
-                fill=fill,
+                fillColor=fill_color,
+                fillGradient=fill_gradient,
                 strokeStyle=stroke_style,
                 pathGeometries=path_geometry_list,
                 **base_element_data

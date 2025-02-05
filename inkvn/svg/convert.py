@@ -11,7 +11,7 @@ from inkex.base import SvgOutputMixin
 import lxml.etree
 
 from inkvn.reader.datatypes import (
-    Artboard, BaseElement, Color, Frame, GroupElement,
+    Artboard, BaseElement, Color, Frame, GroupElement, Gradient,
     ImageElement, Layer, PathElement, basicStrokeStyle,
     localTransform, pathGeometry, pathStrokeStyle
 )
@@ -201,8 +201,23 @@ class CurveConverter():
             path.style["stroke"] = "none"
 
         # Fill Style
-        if path_element.fill:
-            self.set_fill_styles(path, path_element.fill)
+        if path_element.fillColor:
+            self.set_fill_color_styles(path, path_element.fillColor)
+        elif path_element.fillGradient:
+
+            # Add gradientTransform
+            # matrix transform is based on Vectornator 4.13.2, format 13
+            # and Linearity Curve 5.1.1, format 21
+            if path_element.fillGradient.transform:
+                inkex.utils.debug(f'{path_element.name}: This element has MATRIX!!!!')
+                path_element.fillGradient.gradient.set("gradientTransform", path_element.fillGradient.transform)
+
+            elif path_element.localTransform and not self.has_transform_applied:
+                inkex.utils.debug(f'{path_element.name}: This element has gradientTransform')
+                gradient_transform = path_element.localTransform.create_transform()
+                path_element.fillGradient.gradient.set("gradientTransform", gradient_transform)
+
+            self.set_fill_grad_styles(path, path_element.fillGradient)
         else:
             path.style["fill"] = "none"
 
@@ -237,10 +252,16 @@ class CurveConverter():
         elem.style["stroke-dasharray"] = stroke.basicStrokeStyle.dashPattern
         elem.style["stroke-width"] = stroke.width
 
-    def set_fill_styles(self, elem: inkex.BaseElement, fill: Color) -> None:
-        """Apply fill to inkex.BaseElement."""
-        # TODO Gradient
+    def set_fill_color_styles(self, elem: inkex.BaseElement, fill: Color) -> None:
+        """Apply fillColor to inkex.BaseElement."""
         elem.style["fill"] = fill.hex
         elem.style["fill-opacity"] = fill.alpha
+        elem.style["fill-rule"] = "nonzero"
+
+    def set_fill_grad_styles(self, elem: inkex.BaseElement, fill: Gradient) -> None:
+        """Apply fillGradient to inkex.BaseElement."""
+        self.document.defs.add(fill.gradient)
+        elem.style["fill"] = f"url(#{fill.gradient.get_id()})"
+        # elem.style["fill-opacity"] = fill.alpha # ??
         elem.style["fill-rule"] = "nonzero"
 
