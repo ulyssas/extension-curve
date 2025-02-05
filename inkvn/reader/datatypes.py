@@ -73,6 +73,7 @@ class ImageElement(BaseElement):
 
 @dataclass
 class PathElement(BaseElement):
+    """Path Element properties."""
     fill: Optional[Color]
     strokeStyle: Optional[pathStrokeStyle]
     pathGeometries: List[pathGeometry]
@@ -87,6 +88,7 @@ class PathElement(BaseElement):
 
 @dataclass
 class GroupElement(BaseElement):
+    """Group Element properties."""
     groupElements: List[BaseElement]
 
 
@@ -119,6 +121,7 @@ class Frame:
 
 @dataclass
 class localTransform:
+    """Linearity Curve transform."""
     rotation: float = 0.0
     scale: List[float] = field(default_factory=lambda: [1.0, 1.0])
     shear: float = 0.0

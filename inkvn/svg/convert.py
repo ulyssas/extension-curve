@@ -1,10 +1,8 @@
 """
 inkvn Converter
 
-Convert the intermediate data read by read.py
+Convert the intermediate data to Inkscape read by read.py
 """
-
-from dataclasses import asdict
 
 from typing import Any, Dict, Optional, Tuple
 

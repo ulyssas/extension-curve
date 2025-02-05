@@ -3,9 +3,7 @@ inkvn (extension-curve) (2025/1/21)
 
 description: Linearity Curve file importer with fileVersion 44
 
-what works (2025/01/28): None
-
-Under construction
+! what DOESN'T work (2025/02/05): Gradient, Blur, Text, mask, guide
 """
 
 import os
