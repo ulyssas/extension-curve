@@ -209,11 +209,9 @@ class CurveConverter():
             # matrix transform is based on Vectornator 4.13.2, format 13
             # and Linearity Curve 5.1.1, format 21
             if path_element.fillGradient.transform:
-                inkex.utils.debug(f'{path_element.name}: This element has MATRIX!!!!')
                 path_element.fillGradient.gradient.set("gradientTransform", path_element.fillGradient.transform)
 
             elif path_element.localTransform and not self.has_transform_applied:
-                inkex.utils.debug(f'{path_element.name}: This element has gradientTransform')
                 gradient_transform = path_element.localTransform.create_transform()
                 path_element.fillGradient.gradient.set("gradientTransform", gradient_transform)
 
