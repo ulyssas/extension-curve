@@ -4,16 +4,15 @@ inkvn Converter
 Convert the intermediate data to Inkscape read by read.py
 """
 
-from typing import Any, Dict, Optional, Tuple
+from typing import List, Optional
 
 import inkex
 from inkex.base import SvgOutputMixin
 import lxml.etree
 
 from inkvn.reader.datatypes import (
-    Artboard, BaseElement, Color, Frame, GroupElement, Gradient,
-    ImageElement, Layer, PathElement, basicStrokeStyle,
-    localTransform, pathGeometry, pathStrokeStyle
+    Artboard, BaseElement, Color, GroupElement, Gradient,
+    ImageElement, PathElement, pathStrokeStyle
 )
 from inkvn.reader.read import CurveReader
 
@@ -52,7 +51,7 @@ class CurveConverter():
         self.document = self.doc.getroot()
 
         # Adding comments
-        comment = lxml.etree.Comment("Converted by extension-curve")
+        comment = lxml.etree.Comment(" Converted by extension-curve ")
         self.document.addprevious(comment)
 
         # first artboard becomes the front page
@@ -123,14 +122,17 @@ class CurveConverter():
 
         # BaseElement
         group.label = group_element.name
-        # TODO blur
         group.style["opacity"] = group_element.opacity
-        group.style["mix-blend-mode"] = group_element.blend_to_str(group_element.blendMode)
+        group.style["mix-blend-mode"] = group_element.blend_to_str()
         group.style["display"] = "none" if group_element.isHidden else "inline"
         if group_element.isLocked:
             group.set("sodipodi:insensitive", "true")
         if not self.has_transform_applied and group_element.localTransform:
             group.transform = group_element.localTransform.create_transform()
+
+        # blur
+        if group_element.blur > 0:
+            self.set_blur(group, group_element.convert_blur())
 
         for child in group_element.groupElements:
             svg_element = self.load_element(child)
@@ -145,9 +147,8 @@ class CurveConverter():
 
         # BaseElement
         image.label = image_element.name
-        # TODO blur
         image.style["opacity"] = image_element.opacity
-        image.style["mix-blend-mode"] = image_element.blend_to_str(image_element.blendMode)
+        image.style["mix-blend-mode"] = image_element.blend_to_str()
         image.style["display"] = "none" if image_element.isHidden else "inline"
         if image_element.isLocked:
             image.set("sodipodi:insensitive", "true")
@@ -155,6 +156,10 @@ class CurveConverter():
             image.transform = image_element.localTransform.create_transform()
         elif image_element.transform:
             image.transform = image_element.transform
+
+        # blur
+        if image_element.blur > 0:
+            self.set_blur(image, image_element.convert_blur())
 
         # Image
         img_format = image_element.image_format()
@@ -177,7 +182,7 @@ class CurveConverter():
         # pathGeometry
         if path_element.pathGeometries:
             for path_geometry in path_element.pathGeometries:
-                path.path += path_geometry.parse_nodes()
+                path.path += path_geometry.path
 
         if not self.has_transform_applied and path_element.localTransform:
             path.transform = path_element.localTransform.create_transform()
@@ -185,14 +190,23 @@ class CurveConverter():
             # Apply Transform
             path = inkex.PathElement.new(path.get_path().transform(path.transform))
 
+        # PathEffect(corner), does not work for other paths in compoundPath
+        if path_element.pathGeometries[0].corner_radius:
+            corner_radius = path_element.pathGeometries[0].corner_radius
+            if any(corner_radius):  # only if there are values other than 0
+                self.set_corner(path, corner_radius)
+
         # BaseElement
         path.label = path_element.name
-        # TODO blur
         path.style["opacity"] = path_element.opacity
-        path.style["mix-blend-mode"] = path_element.blend_to_str(path_element.blendMode)
+        path.style["mix-blend-mode"] = path_element.blend_to_str()
         path.style["display"] = "none" if path_element.isHidden else "inline"
         if path_element.isLocked:
             path.set("sodipodi:insensitive", "true")
+
+        # blur
+        if path_element.blur > 0:
+            self.set_blur(path, path_element.convert_blur())
 
         # Stroke Style
         if path_element.strokeStyle:
@@ -230,7 +244,7 @@ class CurveConverter():
         # BaseElement
         path.label = base_element.name
         path.style["opacity"] = base_element.opacity
-        path.style["mix-blend-mode"] = base_element.blend_to_str(base_element.blendMode)
+        path.style["mix-blend-mode"] = base_element.blend_to_str()
         path.style["display"] = "none" if base_element.isHidden else "inline"
         if base_element.isLocked:
             path.set("sodipodi:insensitive", "true")
@@ -262,4 +276,41 @@ class CurveConverter():
         elem.style["fill"] = f"url(#{fill.gradient.get_id()})"
         # elem.style["fill-opacity"] = fill.alpha # ??
         elem.style["fill-rule"] = "nonzero"
+
+    def set_blur(self, elem: inkex.BaseElement, blur: inkex.Filter.GaussianBlur) -> None:
+        """Apply blur to inkex.BaseElement."""
+        filter: inkex.Filter = inkex.Filter()
+        filter.set("color-interpolation-filters", "sRGB")
+        filter.add(blur)
+        self.document.defs.add(filter)
+
+        # Only one filter will be there
+        elem.style["filter"] = f"url(#{filter.get_id()})"
+
+    def set_corner(self, elem: inkex.PathElement, corner_radius: List[float]) -> None:
+        """Apply rounded corner to inkex.PathElement."""
+        params = " @ ".join(
+            f"F,0,0,1,0,{r},0,1"
+            for r in corner_radius
+        )
+
+        # TODO more cornerRadius work
+        #  flexible="false" is how Linearity Curve behaved,
+        #  but this is not optimal
+        path_effect = inkex.PathEffect.new(
+            effect="fillet_chamfer",
+            lpeversion="1",
+            method="auto",
+            flexible="false",
+            is_visible="true",
+            satellites_param=params,  # Inkscape 1.2
+            nodesatellites_param=params,  # Inkscape 1.3
+        )
+
+        self.document.defs.add(path_effect)
+        elem.set("inkscape:original-d", str(elem.path))
+        elem.set(
+            "inkscape:path-effect", f"{path_effect.get_id(1)}"
+        )
+        elem.attrib.pop("d", None)  # delete "d", Inkscape auto-generates LPE path
 

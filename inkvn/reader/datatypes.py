@@ -28,8 +28,7 @@ class BaseElement:
     isLocked: bool
     localTransform: Optional[localTransform]
 
-    @staticmethod
-    def blend_to_str(blendmode: int) -> str:
+    def blend_to_str(self) -> str:
         """Returns value for mix-blend-mode attribute."""
         blend_mode_map = {
             0: "normal",
@@ -45,7 +44,17 @@ class BaseElement:
             14: "color",
             15: "luminosity",
         }
-        return blend_mode_map.get(blendmode, "normal")
+        return blend_mode_map.get(self.blendMode, "normal")
+
+    def convert_blur(self) -> inkex.Filter.GaussianBlur:
+        """Returns inkex GaussianBlur."""
+        """
+        TODO Blur does not work like it should.
+        divided by 3 because I don't know
+        """
+        return inkex.Filter.GaussianBlur.new(
+            stdDeviation=self.blur / 3.0, result="blur"
+        )
 
 
 @dataclass
@@ -77,6 +86,7 @@ class PathElement(BaseElement):
     fillColor: Optional[Color]
     fillGradient: Optional[Gradient]
     strokeStyle: Optional[pathStrokeStyle]
+    # It's list because compoundPath has multiple pathGeometries
     pathGeometries: List[pathGeometry]
 
 
@@ -165,24 +175,22 @@ class localTransform:
         return tr
 
 
-@dataclass
 class pathGeometry:
     """path format in Linearity Curve(nodes)."""
-    closed: bool
-    nodes: List[Dict]
+    def __init__(self, closed: bool, nodes: List[Dict]):
+        self.corner_radius: List[float] = []
+        self.path = self.parse_nodes(closed, nodes)
 
-    def parse_nodes(self) -> inkex.Path:
+    def parse_nodes(self, closed: bool, nodes: List[Dict]) -> inkex.Path:
         """Converts single pathGeometry data to inkex path."""
-        nodes = self.nodes
         path = None
 
-        if self.closed:
+        if closed:
             nodes.append(nodes[0])
 
         for node in nodes:
             # Path data is stored as  list of [inPoint, anchor, outPoint]
             # (plus some extra attributes for which we don't have enough data atm)
-
             anchor = inkex.Vector2d(node["anchorPoint"])
             if path is None:
                 path = inkex.Path([inkex.paths.Move(*anchor)])
@@ -198,7 +206,10 @@ class pathGeometry:
             prev = anchor
             outpt = inkex.Vector2d(node["outPoint"])
 
-        if self.closed:
+            # add corner radius to the list
+            self.corner_radius.append(node["cornerRadius"])
+
+        if closed:
             path.append(inkex.paths.ZoneClose())
 
         return path
@@ -294,7 +305,7 @@ class Gradient:
         """
         Initializes the Gradient object from a Linearity Curve data.
         """
-        self.gradient: inkex.Gradient = self.convert_gradient(
+        self.gradient: inkex.Gradient = self._convert_gradient(
             tr=start_end,
             stops=stops,
             type_value=typeRawValue
@@ -306,7 +317,7 @@ class Gradient:
             self.transform = tr
 
     @staticmethod
-    def convert_gradient(
+    def _convert_gradient(
         tr: Dict[str, Any], stops: List[Dict], type_value: int
     ) -> inkex.Gradient:
         if type_value == 0:  # Linear Gradient
@@ -357,9 +368,9 @@ class pathStrokeStyle:
 
 class basicStrokeStyle:
     def __init__(self, cap: int, dashPattern: Optional[List[float]], join: int, position: int):
-        self.cap: str = self.cap_to_svg(cap)
+        self.cap: str = self._cap_to_svg(cap)
         self.dashPattern: List[float] = self._process_dash_pattern(dashPattern)
-        self.join: str = self.join_to_svg(join)
+        self.join: str = self._join_to_svg(join)
         self.position: int = position
 
     @staticmethod
@@ -374,7 +385,7 @@ class basicStrokeStyle:
         return dashPattern
 
     @staticmethod
-    def cap_to_svg(cap):
+    def _cap_to_svg(cap):
         """Returns value for stroke-linecap attribute."""
         cap_map = {
             0: "butt",
@@ -384,7 +395,7 @@ class basicStrokeStyle:
         return cap_map.get(cap, "butt")
 
     @staticmethod
-    def join_to_svg(join: int) -> str:
+    def _join_to_svg(join: int) -> str:
         """Returns value for stroke-linejoin attribute."""
         join_map = {
             0: "miter",
