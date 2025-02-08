@@ -12,8 +12,8 @@ import inkex
 
 import inkvn.reader.extract as ext
 from inkvn.reader.datatypes import (
-    Artboard, BaseElement, Color, Frame, GroupElement, Gradient,
-    ImageElement, Layer, PathElement, basicStrokeStyle,
+    Artboard, BaseElement, Color, Frame, GroupElement, GuideElement,
+    ImageElement, Layer, PathElement, basicStrokeStyle, Gradient,
     localTransform, pathGeometry, pathStrokeStyle
 )
 
@@ -27,6 +27,7 @@ def read_artboard(archive: Any, gid_json: Dict) -> Artboard:
     # "layer_ids" contain layer indexes, while "layers" contain existing layers
     artboard = gid_json["artboards"][0] # ? format version sensitive????
     layer_ids = artboard["layerIds"]
+    existing_layers = gid_json["layers"]
     layer_list: List[Layer] = []
 
     # Locate elements specified in layers.elementIds with read_layer
@@ -34,10 +35,21 @@ def read_artboard(archive: Any, gid_json: Dict) -> Artboard:
         layer = get_json_element(gid_json, "layers", layer_id)
         layer_list.append(read_layer(archive, gid_json, layer))
 
+    # Adding Guides
+    guide_layer = existing_layers[len(layer_list)] # the very last layer is guide
+    guide_ids = guide_layer["elementIds"]
+    guide_list: List[GuideElement] = []
+
+    for guide_id in guide_ids:
+        guide = get_json_element(gid_json, "elements", guide_id)
+        if guide is not None:
+            guide_list.append(read_element(archive, gid_json, guide))
+
     return Artboard(
         title=artboard["title"],
         frame=Frame(**artboard["frame"]),
-        layers=layer_list
+        layers=layer_list,
+        guides=guide_list
     )
 
 
@@ -251,6 +263,12 @@ def read_element(archive, gid_json, element) -> BaseElement:
                 group_element_list.append(read_element(archive, gid_json, group_element))
 
         return GroupElement(groupElements=group_element_list, **base_element_data)
+
+    # Guide (GuideElement)
+    guide_id = element.get("subElement", {}).get("guideLine", {}).get("_0")
+    if guide_id is not None:
+        guide = get_json_element(gid_json, "guideLines", guide_id)
+        return GuideElement(**guide, **base_element_data)
 
     # if the element is unknown type:
     return BaseElement(**base_element_data)

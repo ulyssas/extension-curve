@@ -11,8 +11,8 @@ from inkex.base import SvgOutputMixin
 import lxml.etree
 
 from inkvn.reader.datatypes import (
-    Artboard, BaseElement, Color, GroupElement, Gradient,
-    ImageElement, PathElement, pathStrokeStyle
+    Artboard, BaseElement, Color, GroupElement, GuideElement,
+    ImageElement, PathElement, pathStrokeStyle, Gradient,
 )
 from inkvn.reader.read import CurveReader
 
@@ -78,10 +78,11 @@ class CurveConverter():
 
         # artboards have translations
         tr = inkex.transforms.Transform()
-        tr.add_translate(
+        tr_vector = inkex.Vector2d(
             artboard.frame.x - self.offset_x,
             artboard.frame.y - self.offset_y
         )
+        tr.add_translate(tr_vector)
         root_layer.transform = tr
 
         # layers in the artboard
@@ -100,6 +101,10 @@ class CurveConverter():
                 elm = self.load_element(element)
                 if elm is not None:
                     parent.add(elm)
+
+        for guide in artboard.guides:
+            if guide:
+                self.add_guide(guide, tr_vector)
 
     def load_element(self, element: BaseElement) -> Optional[inkex.BaseElement]:
         """Converts an element to an SVG element."""
@@ -313,4 +318,52 @@ class CurveConverter():
             "inkscape:path-effect", f"{path_effect.get_id(1)}"
         )
         elem.attrib.pop("d", None)  # delete "d", Inkscape auto-generates LPE path
+
+    def add_guide(self, guide_element: BaseElement, offset: inkex.Vector2d) -> None:
+        """
+        Creates a Guide from inkvn GuideElement.
+
+        Older Vectornator(4.10.4) uses actual path data for guides,
+        which are converted into inkvn GroupElement.
+
+        So argument type is set to BaseElement
+        """
+
+        def extract_guide(inkex_path: inkex.Path):
+            """
+            Extracts guide offset and orientation from an inkex.Path object.
+            """
+            path_data = inkex_path.to_arrays()
+            #inkex.utils.debug(f"HERES THE PATH: {path_data}")
+
+            if len(path_data) < 2:
+                raise ValueError("Invalid guide path: Less than two points found.")
+
+            (_, [x0, y0]), (_, [x1, y1]) = path_data[0], path_data[-1]
+
+            if y0 == y1:  # horizontal
+                return y0, True
+            elif x0 == x1:  # vertical
+                return x0, False
+            else:
+                raise ValueError("Invalid guide path: Not perfectly horizontal or vertical.")
+
+        if isinstance(guide_element, GuideElement):
+            # if it's horizontal
+            if guide_element.orientation == 1:
+                self.document.namedview.add_guide(guide_element.offset + offset.y, orient=True)
+            else:
+                self.document.namedview.add_guide(guide_element.offset + offset.x, orient=False)
+
+        elif isinstance(guide_element, GroupElement):
+            # there should be two elements, second one is the line
+            sub_element = guide_element.groupElements[1]
+            if isinstance(sub_element, PathElement):
+                path_data = sub_element.pathGeometries[0].path
+
+                guide_offset, orientation = extract_guide(path_data)
+                if orientation:
+                    self.document.namedview.add_guide(guide_offset + offset.y, orient=True)
+                else:
+                    self.document.namedview.add_guide(guide_offset + offset.x, orient=False)
 

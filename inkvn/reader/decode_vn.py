@@ -12,8 +12,8 @@ import inkex
 
 import inkvn.reader.extract as ext
 from inkvn.reader.datatypes import (
-    Artboard, BaseElement, Color, Frame, GroupElement, Gradient,
-    ImageElement, Layer, PathElement, basicStrokeStyle,
+    Artboard, BaseElement, Color, Frame, GroupElement, GuideElement,
+    ImageElement, Layer, PathElement, basicStrokeStyle, Gradient,
     localTransform, pathGeometry, pathStrokeStyle
 )
 
@@ -28,20 +28,27 @@ def read_artboard(archive: Any, gid_json: Dict) -> Artboard:
     layer_list: List[Layer] = []
 
     for layer in layers:
-        layer_list.append(read_layer(archive, gid_json, layer))
+        layer_list.append(read_vn_layer(archive, layer))
+
+    # Adding Guides
+    guides = gid_json["guideLayer"]["elements"]
+    guide_list: List[GuideElement] = []
+
+    for guide in guides:
+        if guide is not None:
+            guide_list.append(read_vn_element(archive, guide))
 
     return Artboard(
         title=gid_json["title"],
         frame=Frame(**gid_json["frame"]),
-        layers=layer_list
+        layers=layer_list,
+        guides=guide_list
     )
 
 
-def read_layer(archive: Any, gid_json: Dict, layer: Dict) -> Layer:
+def read_vn_layer(archive: Any, layer: Dict) -> Layer:
     """
     Read specified layer and return their attributes as class.
-
-    gid_json is used for finding elements inside the layer.
     """
     properties = layer["properties"]
     elements = layer["elements"]
@@ -50,7 +57,7 @@ def read_layer(archive: Any, gid_json: Dict, layer: Dict) -> Layer:
     # process each elements
     for element in elements:
         if element is not None:
-            element_list.append(read_element(archive, gid_json, element))
+            element_list.append(read_vn_element(archive, element))
 
     return Layer(
         name=properties["name"],
@@ -62,7 +69,7 @@ def read_layer(archive: Any, gid_json: Dict, layer: Dict) -> Layer:
     )
 
 
-def read_element(archive, gid_json, element) -> BaseElement:
+def read_vn_element(archive, element) -> BaseElement:
     """Traverse specified element and extract their attributes."""
 
     base_element_data = {
@@ -251,9 +258,14 @@ def read_element(archive, gid_json, element) -> BaseElement:
         for group_element in group_elements:
             if group_element:
                 # get group elements recursively
-                group_element_list.append(read_element(archive, gid_json, group_element))
+                group_element_list.append(read_vn_element(archive, group_element))
 
         return GroupElement(groupElements=group_element_list, **base_element_data)
+
+    # Guide (GuideElement)
+    guide = element.get("subElement", {}).get("guideLine", {}).get("_0")
+    if guide is not None:
+        return GuideElement(**guide, **base_element_data)
 
     # if the element is unknown type:
     return BaseElement(**base_element_data)

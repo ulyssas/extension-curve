@@ -90,17 +90,45 @@ class PathElement(BaseElement):
     pathGeometries: List[pathGeometry]
 
 
-# No text for now
-# @dataclass
-# class TextElement(BaseElement):
-#     styledText
-#     textProperty
+@dataclass
+class TextElement(BaseElement):
+    styledText: styledText
+    textProperty: textProperty
+
+
+@dataclass
+class styledText:
+    # List means different styles for each characters(upperBound)
+    alignment: List[Dict]
+    fillColor: List[Dict]
+    fontName: List[Dict]
+    fontSize: List[Dict]
+    kerning: List[Dict]
+    lineHeight: List[Dict]
+    strikethrough: List[Dict]
+    string: str
+    underline: List[Dict]
+
+
+@dataclass
+class textProperty:
+    # "fixedSize":{"height": float,"width": float}
+    # autos don't contain values
+    textFrameLimits: Dict # autoWidth, autoHeight, fixedSize
+    textFramePivot: Tuple[float, float]
 
 
 @dataclass
 class GroupElement(BaseElement):
     """Group Element properties."""
     groupElements: List[BaseElement]
+
+
+@dataclass
+class GuideElement(BaseElement):
+    """Guide element."""
+    offset: float
+    orientation: int # 0: vertical, 1: horizontal
 
 
 @dataclass
@@ -119,6 +147,7 @@ class Artboard:
     title: str
     frame: Frame
     layers: List[Layer]
+    guides: Optional[List[GuideElement]]
 
 
 @dataclass
