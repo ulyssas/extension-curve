@@ -92,8 +92,8 @@ class PathElement(BaseElement):
 
 @dataclass
 class TextElement(BaseElement):
-    styledText: styledText
-    textProperty: textProperty
+    styledText: Optional[styledText]
+    textProperty: Optional[textProperty]
 
 
 @dataclass

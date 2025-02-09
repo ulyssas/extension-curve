@@ -1,7 +1,7 @@
 """
 VI decoders
 
-converts Linearity Curve (5.18) JSON data to inkvn.
+converts Linearity Curve (5.x) JSON data to inkvn.
 
 Only tested for fileFormatVersion 44.
 """
@@ -14,7 +14,8 @@ import inkvn.reader.extract as ext
 from inkvn.reader.datatypes import (
     Artboard, BaseElement, Color, Frame, GroupElement, GuideElement,
     ImageElement, Layer, PathElement, basicStrokeStyle, Gradient,
-    localTransform, pathGeometry, pathStrokeStyle
+    localTransform, pathGeometry, pathStrokeStyle,
+    TextElement, styledText, textProperty
 )
 
 
@@ -128,6 +129,11 @@ def read_element(archive, gid_json, element) -> BaseElement:
         stroke_style_id = None
         abstract_path_id = None
 
+        # mask
+        mask = stylable.get("mask")
+        if mask is not None:
+            inkex.utils.debug(f'{base_element_data["name"]}: Mask is not supported and will be ignored.')
+
         # singleStyles (based on Curve 5.1.2)
         single_style_id = stylable.get("subElement", {}).get("singleStyle", {}).get("_0")
         if single_style_id is not None:
@@ -231,22 +237,34 @@ def read_element(archive, gid_json, element) -> BaseElement:
                 **base_element_data
             )
 
-        # Abstract Text (TextElement)
+        # Abstract Text (TextElement), only supports new text format, Curve 5.1.2 does not work.
+        # TODO Add support for Text
         abstract_text_id = stylable.get("subElement", {}).get("abstractText", {}).get("_0")
         if abstract_text_id is not None:
-            # TODO Add support for Text
             inkex.utils.debug(f'{base_element_data["name"]}: Text is not supported and will be ignored.')
-        #     abstract_text = get_json_element(gid_json, "abstractTexts", abstract_text_id)
-        #     text_id = abstract_text["textId"]
-        #     styled_text_id = abstract_text["subElement"]["text"]["_0"]
+            #abstract_text = get_json_element(gid_json, "abstractTexts", abstract_text_id)
+            #text_id = abstract_text.get("textId")
+            #styled_text_id = abstract_text.get("subElement", {}).get("text", {}).get("_0")
 
-        #     # texts(layout??), will be named textProperty internally
-        #     if text_id is not None:
-        #         element_result["textProperty"] = get_json_element(gid_json, "texts", text_id)
+            ## will be used to return TextElement
+            #text_property = None
+            #styled_text = None
 
-        #     # styledTexts
-        #     if styled_text_id is not None:
-        #         element_result["styledText"] = get_json_element(gid_json, "styledTexts", styled_text_id)
+            ## texts(layout??), will be named textProperty internally
+            #if text_id is not None:
+            #    text_property = get_json_element(gid_json, "texts", text_id)
+            #    text_property = textProperty(**text_property)
+
+            ## styledTexts
+            #if styled_text_id is not None:
+            #    styled_text = get_json_element(gid_json, "styledTexts", styled_text_id)
+            #    styled_text = styledText(**styled_text)
+
+            #return TextElement(
+            #    styledText=styled_text,
+            #    textProperty=text_property,
+            #    **base_element_data
+            #)
 
     # Group (GroupElement)
     group_id = element.get("subElement", {}).get("group", {}).get("_0")

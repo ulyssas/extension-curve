@@ -12,7 +12,7 @@ import lxml.etree
 
 from inkvn.reader.datatypes import (
     Artboard, BaseElement, Color, GroupElement, GuideElement,
-    ImageElement, PathElement, pathStrokeStyle, Gradient,
+    ImageElement, PathElement, pathStrokeStyle, Gradient, TextElement
 )
 from inkvn.reader.read import CurveReader
 
@@ -35,9 +35,11 @@ class CurveConverter():
 
         New curve holds path data without transforms
         However, old curve has transforms already applied.
-        I don't know exactly when the behavior has changed, so it's set to 44
+        I don't know exactly when the behavior has changed, so it's set to 30 as placeholder
+
+        Curve 5.12.0, format 40 confirmed(works the same as 44)
         """
-        if reader.file_version < 44:
+        if reader.file_version < 30:
             self.has_transform_applied = True
         else:
             self.has_transform_applied = False
@@ -114,7 +116,10 @@ class CurveConverter():
             return self.convert_image(element)
         elif isinstance(element, PathElement):
             return self.convert_path(element)
-        # TODO TEXT
+        elif isinstance(element, TextElement):
+            # TODO TEXT
+            inkex.utils.debug(f'{element.name}: Text has been successfully parsed, but text import is not supported yet.')
+            return self.convert_base(element)
         elif isinstance(element, BaseElement):
             return self.convert_base(element)  # will be empty path element
         else:

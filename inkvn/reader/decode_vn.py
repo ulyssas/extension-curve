@@ -1,7 +1,8 @@
 """
 VI decoders
 
-converts Vectornator JSON data to inkvn.
+converts Vectornator JSON data to inkvn (Vectornator mode).
+This is used for Linearity Curve 5.0.x import as well (format 19).
 
 Needs more Vectornator files for reference
 """
@@ -18,7 +19,7 @@ from inkvn.reader.datatypes import (
 )
 
 
-def read_artboard(archive: Any, gid_json: Dict) -> Artboard:
+def read_vn_artboard(archive: Any, gid_json: Dict) -> Artboard:
     """
     Reads gid.json(artboard) and returns artboard class.
 
@@ -50,7 +51,6 @@ def read_vn_layer(archive: Any, layer: Dict) -> Layer:
     """
     Read specified layer and return their attributes as class.
     """
-    properties = layer["properties"]
     elements = layer["elements"]
     element_list: List[BaseElement] = []
 
@@ -59,14 +59,27 @@ def read_vn_layer(archive: Any, layer: Dict) -> Layer:
         if element is not None:
             element_list.append(read_vn_element(archive, element))
 
-    return Layer(
-        name=properties["name"],
-        opacity=properties["opacity"],
-        isVisible=properties["isVisible"],
-        isLocked=properties["isLocked"],
-        isExpanded=properties["isExpanded"],
-        elements=element_list
-    )
+    # properties
+    # properties did not exist in 4.9.0, format 7.
+    if layer.get("properties"):
+        properties = layer["properties"]
+        return Layer(
+            name=properties.get("name"),
+            opacity=properties.get("opacity"),
+            isVisible=properties.get("isVisible"),
+            isLocked=properties.get("isLocked"),
+            isExpanded=properties.get("isExpanded"),
+            elements=element_list
+        )
+    else:
+        return Layer(
+            name=layer.get("name"),
+            opacity=layer.get("opacity"),
+            isVisible=layer.get("isVisible"),
+            isLocked=layer.get("isLocked"),
+            isExpanded=layer.get("isExpanded"),
+            elements=element_list
+        )
 
 
 def read_vn_element(archive, element) -> BaseElement:
@@ -217,11 +230,24 @@ def read_vn_element(archive, element) -> BaseElement:
                         else:
                             sub_path = sub_element
 
-                        path_geometry = pathGeometry(
-                            closed=sub_path["closed"],
-                            nodes=sub_path["nodes"]
-                        )
-                        path_geometry_list.append(path_geometry)
+                        geometry = sub_path.get("geometry")
+
+                        # AbstractPath
+                        if sub_path.get("nodes"):
+                            # Path Geometry
+                            path_geometry = pathGeometry(
+                                closed=sub_path["closed"],
+                                nodes=sub_path["nodes"]
+                            )
+                            path_geometry_list.append(path_geometry)
+
+                        # SingleStyle
+                        elif geometry:
+                            path_geometry = pathGeometry(
+                                closed=geometry["closed"],
+                                nodes=geometry["nodes"]
+                            )
+                            path_geometry_list.append(path_geometry)
 
             return PathElement(
                 fillColor=fill_color,
@@ -234,7 +260,7 @@ def read_vn_element(archive, element) -> BaseElement:
         # Abstract Text (TextElement)
         text_data = stylable.get("subElement", {}).get("text", {}).get("_0")
         if text_data is not None:
-            # TODO Add support for Text
+            # TODO Add support for Vectornator Text
             inkex.utils.debug(f'{base_element_data["name"]}: Text is not supported and will be ignored.')
         #     abstract_text = get_json_element(gid_json, "abstractTexts", abstract_text_id)
         #     text_id = abstract_text["textId"]

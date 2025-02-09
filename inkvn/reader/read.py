@@ -10,6 +10,7 @@ import zipfile
 from typing import List
 
 from packaging import version
+import inkex
 
 import inkvn.reader.decode as d
 import inkvn.reader.decode_vn as dvn
@@ -27,6 +28,7 @@ class CurveReader:
     def __init__(self, stream):
         self.archive = zipfile.ZipFile(stream, 'r')
         self.file_version: int = 44 # main support
+        self.app_version: str
         self.artboards: List[Artboard] = []
 
         self.read()
@@ -37,9 +39,10 @@ class CurveReader:
         drawing_data = ext.extract_drawing_data(document)
 
         units = drawing_data["settings"]["units"]
-        version = document["appVersion"]
+        self.app_version = document["appVersion"]
         self.file_version = manifest["fileFormatVersion"]
         artboard_paths = drawing_data["artboardPaths"]
+        inkex.utils.debug(f"App version: {self.app_version}, File version: {self.file_version}, File name: {self.archive.filename}")
 
         assert len(artboard_paths), "No artboard paths found in the document."
 
@@ -51,7 +54,7 @@ class CurveReader:
             gid_json = ext.extract_gid_json(self.archive, artboard_path)
 
             # if the file is Linearity Curve
-            if self.check_if_curve(version):
+            if self.check_if_curve(self.app_version):
                 # inkex.utils.debug(f"Curve version: {version}.")
                 artboard = d.read_artboard(self.archive, gid_json)
                 self.artboards.append(artboard)
@@ -59,13 +62,13 @@ class CurveReader:
             # if the file is Vectornator
             else:
                 # inkex.utils.debug(f"Legacy Curve / Vectornator version: {version}.")
-                artboard = dvn.read_artboard(self.archive, gid_json)
+                artboard = dvn.read_vn_artboard(self.archive, gid_json)
                 self.artboards.append(artboard)
 
     @staticmethod
     def check_if_curve(input_version: str):
         """check if the app version is 5.x or not"""
-        required_version = version.parse("5.0.3")
+        required_version = version.parse("5.1.0")
         try:
             current_version = version.parse(input_version)
         except version.InvalidVersion:
