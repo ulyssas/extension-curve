@@ -7,8 +7,8 @@ description: Linearity Curve / Vectornator file importer for Inkscape
 ! and other features I missed
 """
 
-from inkvn.svg.convert import CurveConverter
-from inkvn.reader.read import CurveReader
+from .svg.convert import CurveConverter
+from .reader.read import CurveReader
 import os
 import sys
 

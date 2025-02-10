@@ -10,14 +10,24 @@ import inkex
 from inkex.base import SvgOutputMixin
 import lxml.etree
 
-from inkvn.reader.datatypes import (
-    Artboard, BaseElement, Color, GroupElement, GuideElement,
-    ImageElement, PathElement, pathStrokeStyle, Gradient, TextElement
-)
-from inkvn.reader.read import CurveReader
+from ..reader.read import CurveReader
+
+from ..elements.artboard import VNArtboard
+from ..elements.base import VNBaseElement
+from ..elements.guide import VNGuideElement
+from ..elements.group import VNGroupElement
+from ..elements.image import VNImageElement
+from ..elements.path import VNPathElement
+from ..elements.text import VNTextElement
+from ..elements.styles import VNColor, VNGradient, pathStrokeStyle
 
 
 class CurveConverter():
+    """
+    inkvn CurveConverter
+
+    Convert the intermediate data to Inkscape.
+    """
     def __init__(self) -> None:
         self.reader: CurveReader
         self.target_version: int
@@ -75,8 +85,8 @@ class CurveConverter():
             )
             self.doc.getroot()
 
-    def load_page(self, root_layer: inkex.Layer, artboard: Artboard) -> None:
-        """Convert inkvn artboard to inkex page."""
+    def load_page(self, root_layer: inkex.Layer, artboard: VNArtboard) -> None:
+        """Convert  VNArtboard to inkex page."""
 
         # artboards have translations
         tr = inkex.transforms.Transform()
@@ -86,6 +96,23 @@ class CurveConverter():
         )
         tr.add_translate(tr_vector)
         root_layer.transform = tr
+
+        # Artboard color/gradient
+        rect = inkex.Rectangle.new(
+            0, 0, artboard.frame.width, artboard.frame.height
+        )
+        rect.label = "background"
+
+        # Fill Style
+        if artboard.fillColor is not None:
+            self.set_fill_color_styles(rect, artboard.fillColor)
+            root_layer.add(rect)
+        elif artboard.fillGradient is not None:
+            if artboard.fillGradient.transform is not None:
+                artboard.fillGradient.gradient.set("gradientTransform", artboard.fillGradient.transform)
+            self.set_fill_grad_styles(rect, artboard.fillGradient)
+            root_layer.add(rect)
+        # if fill is none, rect will be dismissed
 
         # layers in the artboard
         for layer in artboard.layers:
@@ -104,41 +131,47 @@ class CurveConverter():
                 if elm is not None:
                     parent.add(elm)
 
+        # Guide
         for guide in artboard.guides:
-            if guide:
+            if guide is not None:
                 self.add_guide(guide, tr_vector)
 
-    def load_element(self, element: BaseElement) -> Optional[inkex.BaseElement]:
+    def load_element(self, element: VNBaseElement) -> Optional[inkex.BaseElement]:
         """Converts an element to an SVG element."""
-        if isinstance(element, GroupElement):
+        if isinstance(element, VNGroupElement):
             return self.convert_group(element)
-        elif isinstance(element, ImageElement):
+
+        elif isinstance(element, VNImageElement):
             return self.convert_image(element)
-        elif isinstance(element, PathElement):
+
+        elif isinstance(element, VNPathElement):
             return self.convert_path(element)
-        elif isinstance(element, TextElement):
+
+        elif isinstance(element, VNTextElement):
             # TODO TEXT
             inkex.utils.debug(f'{element.name}: Text has been successfully parsed, but text import is not supported yet.')
             return self.convert_base(element)
-        elif isinstance(element, BaseElement):
+
+        elif isinstance(element, VNBaseElement):
             return self.convert_base(element)  # will be empty path element
+
         else:
             inkex.utils.debug(f"Unsupported element type: {type(element)}")
             return None
 
-    def convert_group(self, group_element: GroupElement) -> inkex.Group:
-        """Converts a GroupElement to an SVG group (inkex.Group)."""
+    def convert_group(self, group_element: VNGroupElement) -> inkex.Group:
+        """Converts a VNGroupElement to an SVG group (inkex.Group)."""
         group = inkex.Group()
 
         # BaseElement
         group.label = group_element.name
         group.style["opacity"] = group_element.opacity
-        group.style["mix-blend-mode"] = group_element.blend_to_str()
+        group.style["mix-blend-mode"] = group_element.convert_blend()
         group.style["display"] = "none" if group_element.isHidden else "inline"
         if group_element.isLocked:
             group.set("sodipodi:insensitive", "true")
-        if not self.has_transform_applied and group_element.localTransform:
-            group.transform = group_element.localTransform.create_transform()
+        if not self.has_transform_applied and group_element.localTransform is not None:
+            group.transform = group_element.localTransform.convert_transform()
 
         # blur
         if group_element.blur > 0:
@@ -151,21 +184,21 @@ class CurveConverter():
 
         return group
 
-    def convert_image(self, image_element: ImageElement) -> inkex.Image:
-        """Converts an ImageElement to an SVG image (inkex.Image)."""
+    def convert_image(self, image_element: VNImageElement) -> inkex.Image:
+        """Converts a VNImageElement to an SVG image (inkex.Image)."""
         image = inkex.Image()
 
         # BaseElement
         image.label = image_element.name
         image.style["opacity"] = image_element.opacity
-        image.style["mix-blend-mode"] = image_element.blend_to_str()
+        image.style["mix-blend-mode"] = image_element.convert_blend()
         image.style["display"] = "none" if image_element.isHidden else "inline"
         if image_element.isLocked:
             image.set("sodipodi:insensitive", "true")
-        if not self.has_transform_applied and image_element.localTransform:
-            image.transform = image_element.localTransform.create_transform()
-        elif image_element.transform:
+        if image_element.transform is not None:
             image.transform = image_element.transform
+        elif not self.has_transform_applied and image_element.localTransform is not None:
+            image.transform = image_element.localTransform.convert_transform()
 
         # blur
         if image_element.blur > 0:
@@ -185,8 +218,8 @@ class CurveConverter():
 
         return image
 
-    def convert_path(self, path_element: PathElement) -> inkex.PathElement:
-        """Converts a PathElement to an SVG path (inkex.PathElement)."""
+    def convert_path(self, path_element: VNPathElement) -> inkex.PathElement:
+        """Converts a VNPathElement to an SVG path (inkex.PathElement)."""
         path = inkex.PathElement()
 
         # pathGeometry
@@ -194,14 +227,14 @@ class CurveConverter():
             for path_geometry in path_element.pathGeometries:
                 path.path += path_geometry.path
 
-        if not self.has_transform_applied and path_element.localTransform:
-            path.transform = path_element.localTransform.create_transform()
+        if not self.has_transform_applied and path_element.localTransform is not None:
+            path.transform = path_element.localTransform.convert_transform()
 
             # Apply Transform
             path = inkex.PathElement.new(path.get_path().transform(path.transform))
 
         # PathEffect(corner), does not work for other paths in compoundPath
-        if path_element.pathGeometries[0].corner_radius:
+        if not self.has_transform_applied and path_element.pathGeometries[0].corner_radius is not None:
             corner_radius = path_element.pathGeometries[0].corner_radius
             if any(corner_radius):  # only if there are values other than 0
                 self.set_corner(path, corner_radius)
@@ -209,7 +242,7 @@ class CurveConverter():
         # BaseElement
         path.label = path_element.name
         path.style["opacity"] = path_element.opacity
-        path.style["mix-blend-mode"] = path_element.blend_to_str()
+        path.style["mix-blend-mode"] = path_element.convert_blend()
         path.style["display"] = "none" if path_element.isHidden else "inline"
         if path_element.isLocked:
             path.set("sodipodi:insensitive", "true")
@@ -219,24 +252,23 @@ class CurveConverter():
             self.set_blur(path, path_element.convert_blur())
 
         # Stroke Style
-        if path_element.strokeStyle:
+        if path_element.strokeStyle is not None:
             self.set_stroke_styles(path, path_element.strokeStyle)
         else:
             path.style["stroke"] = "none"
 
         # Fill Style
-        if path_element.fillColor:
+        if path_element.fillColor is not None:
             self.set_fill_color_styles(path, path_element.fillColor)
-        elif path_element.fillGradient:
-
+        elif path_element.fillGradient is not None:
             # Add gradientTransform
             # matrix transform is based on Vectornator 4.13.2, format 13
             # and Linearity Curve 5.1.1, format 21
-            if path_element.fillGradient.transform:
+            if path_element.fillGradient.transform is not None:
                 path_element.fillGradient.gradient.set("gradientTransform", path_element.fillGradient.transform)
 
-            elif path_element.localTransform and not self.has_transform_applied:
-                gradient_transform = path_element.localTransform.create_transform()
+            elif not self.has_transform_applied and path_element.localTransform is not None:
+                gradient_transform = path_element.localTransform.convert_transform()
                 path_element.fillGradient.gradient.set("gradientTransform", gradient_transform)
 
             self.set_fill_grad_styles(path, path_element.fillGradient)
@@ -245,8 +277,8 @@ class CurveConverter():
 
         return path
 
-    def convert_base(self, base_element: BaseElement) -> inkex.PathElement:
-        """Converts a BaseElement to an empty SVG path (inkex.PathElement)."""
+    def convert_base(self, base_element: VNBaseElement) -> inkex.PathElement:
+        """Converts a VNBaseElement to an empty SVG path (inkex.PathElement)."""
         inkex.utils.debug(f'{base_element.name}: This element will be imported as empty path.')
 
         path = inkex.PathElement()
@@ -254,7 +286,7 @@ class CurveConverter():
         # BaseElement
         path.label = base_element.name
         path.style["opacity"] = base_element.opacity
-        path.style["mix-blend-mode"] = base_element.blend_to_str()
+        path.style["mix-blend-mode"] = base_element.convert_blend()
         path.style["display"] = "none" if base_element.isHidden else "inline"
         if base_element.isLocked:
             path.set("sodipodi:insensitive", "true")
@@ -274,13 +306,13 @@ class CurveConverter():
         elem.style["stroke-dasharray"] = stroke.basicStrokeStyle.dashPattern
         elem.style["stroke-width"] = stroke.width
 
-    def set_fill_color_styles(self, elem: inkex.BaseElement, fill: Color) -> None:
+    def set_fill_color_styles(self, elem: inkex.BaseElement, fill: VNColor) -> None:
         """Apply fillColor to inkex.BaseElement."""
         elem.style["fill"] = fill.hex
         elem.style["fill-opacity"] = fill.alpha
         elem.style["fill-rule"] = "nonzero"
 
-    def set_fill_grad_styles(self, elem: inkex.BaseElement, fill: Gradient) -> None:
+    def set_fill_grad_styles(self, elem: inkex.BaseElement, fill: VNGradient) -> None:
         """Apply fillGradient to inkex.BaseElement."""
         self.document.defs.add(fill.gradient)
         elem.style["fill"] = f"url(#{fill.gradient.get_id()})"
@@ -289,13 +321,13 @@ class CurveConverter():
 
     def set_blur(self, elem: inkex.BaseElement, blur: inkex.Filter.GaussianBlur) -> None:
         """Apply blur to inkex.BaseElement."""
-        filter: inkex.Filter = inkex.Filter()
-        filter.set("color-interpolation-filters", "sRGB")
-        filter.add(blur)
-        self.document.defs.add(filter)
+        filt: inkex.Filter = inkex.Filter()
+        filt.set("color-interpolation-filters", "sRGB")
+        filt.add(blur)
+        self.document.defs.add(filt)
 
         # Only one filter will be there
-        elem.style["filter"] = f"url(#{filter.get_id()})"
+        elem.style["filter"] = f"url(#{filt.get_id()})"
 
     def set_corner(self, elem: inkex.PathElement, corner_radius: List[float]) -> None:
         """Apply rounded corner to inkex.PathElement."""
@@ -324,14 +356,14 @@ class CurveConverter():
         )
         elem.attrib.pop("d", None)  # delete "d", Inkscape auto-generates LPE path
 
-    def add_guide(self, guide_element: BaseElement, offset: inkex.Vector2d) -> None:
+    def add_guide(self, guide_element: VNBaseElement, offset: inkex.Vector2d) -> None:
         """
-        Creates a Guide from inkvn GuideElement.
+        Creates a Guide from VNGuideElement.
 
         Older Vectornator(4.10.4) uses actual path data for guides,
         which are converted into inkvn GroupElement.
 
-        So argument type is set to BaseElement
+        So argument type is set to VNBaseElement
         """
 
         def extract_guide(inkex_path: inkex.Path):
@@ -339,7 +371,6 @@ class CurveConverter():
             Extracts guide offset and orientation from an inkex.Path object.
             """
             path_data = inkex_path.to_arrays()
-            #inkex.utils.debug(f"HERES THE PATH: {path_data}")
 
             if len(path_data) < 2:
                 raise ValueError("Invalid guide path: Less than two points found.")
@@ -353,22 +384,22 @@ class CurveConverter():
             else:
                 raise ValueError("Invalid guide path: Not perfectly horizontal or vertical.")
 
-        if isinstance(guide_element, GuideElement):
-            # if it's horizontal
-            if guide_element.orientation == 1:
-                self.document.namedview.add_guide(guide_element.offset + offset.y, orient=True)
-            else:
-                self.document.namedview.add_guide(guide_element.offset + offset.x, orient=False)
+        orientation = False
+        guide_offset = 0
 
-        elif isinstance(guide_element, GroupElement):
+        if isinstance(guide_element, VNGuideElement):
+            guide_offset = guide_element.offset
+            orientation = guide_element.orientation == 1
+
+        elif isinstance(guide_element, VNGroupElement):
+            # legacy guide element.
             # there should be two elements, second one is the line
             sub_element = guide_element.groupElements[1]
-            if isinstance(sub_element, PathElement):
+            if isinstance(sub_element, VNPathElement):
                 path_data = sub_element.pathGeometries[0].path
-
                 guide_offset, orientation = extract_guide(path_data)
-                if orientation:
-                    self.document.namedview.add_guide(guide_offset + offset.y, orient=True)
-                else:
-                    self.document.namedview.add_guide(guide_offset + offset.x, orient=False)
 
+        if orientation:
+            self.document.namedview.add_guide(guide_offset + offset.y, orient=True)
+        else:
+            self.document.namedview.add_guide(guide_offset + offset.x, orient=False)

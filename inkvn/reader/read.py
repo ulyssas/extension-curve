@@ -9,13 +9,13 @@ import logging
 import zipfile
 from typing import List
 
-from packaging import version
 import inkex
+from packaging import version
 
 import inkvn.reader.decode as d
 import inkvn.reader.decode_vn as dvn
 import inkvn.reader.extract as ext
-from inkvn.reader.datatypes import Artboard
+from ..elements.artboard import VNArtboard
 
 
 class CurveReader:
@@ -29,7 +29,7 @@ class CurveReader:
         self.archive = zipfile.ZipFile(stream, 'r')
         self.file_version: int = 44 # main support
         self.app_version: str
-        self.artboards: List[Artboard] = []
+        self.artboards: List[VNArtboard] = []
 
         self.read()
 

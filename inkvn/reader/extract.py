@@ -10,7 +10,7 @@ import io
 import json
 import logging
 import zipfile
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
 
 def read_json_from_zip(archive: zipfile.ZipFile, file_name: str, max_depth: int = 2) -> Dict[str, Any]:
