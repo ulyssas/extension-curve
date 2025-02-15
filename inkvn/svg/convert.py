@@ -4,7 +4,7 @@ inkvn Converter
 Convert the intermediate data to Inkscape read by read.py
 """
 
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
 import inkex
 from inkex.base import SvgOutputMixin
@@ -160,7 +160,47 @@ class CurveConverter():
             return None
 
     def convert_group(self, group_element: VNGroupElement) -> inkex.Group:
-        """Converts a VNGroupElement to an SVG group (inkex.Group)."""
+        """
+        Converts a VNGroupElement to an SVG group (inkex.Group),
+        or ClipPath when the group contains clipping mask.
+        """
+
+        # if clipping mask is needed
+        # TODO fix mask support
+        clip_path_child = None
+        target = None
+        for child in group_element.groupElements:
+            # only allow groups with two elements for now
+            if (isinstance(child, VNPathElement)
+                and child.mask == 1
+                and len(group_element.groupElements) == 2):
+                clip_path_child = child
+                break
+            elif isinstance(child, VNPathElement) and child.mask == 1:
+                inkex.utils.debug(f"{group_element.name}: Masks with more that two elements are not supported.")
+
+        if clip_path_child:
+            # find the clip target (the other element)
+            target = None
+            for other_child in group_element.groupElements:
+                if other_child is not clip_path_child:
+                    target = self.load_element(other_child)
+                    break
+
+            clip = inkex.ClipPath()
+            clip_path_element = self.convert_path(clip_path_child)
+
+            # undoing target transform to clip path
+            if target.transform:
+                clip_path_element.transform = -target.transform
+                clip_path_element.apply_transform()
+
+            clip.add(clip_path_element)
+            self.document.defs.add(clip)
+
+            if target is not None:
+                target.style["clip-path"] = f"url(#{clip.get_id()})"
+
         group = inkex.Group()
 
         # BaseElement
@@ -177,10 +217,13 @@ class CurveConverter():
         if group_element.blur > 0:
             self.set_blur(group, group_element.convert_blur())
 
-        for child in group_element.groupElements:
-            svg_element = self.load_element(child)
-            if svg_element is not None:
-                group.add(svg_element)
+        if target is not None:
+            group.add(target)
+        else:
+            for child in group_element.groupElements:
+                svg_element = self.load_element(child)
+                if svg_element is not None:
+                    group.add(svg_element)
 
         return group
 
@@ -366,7 +409,7 @@ class CurveConverter():
         So argument type is set to VNBaseElement
         """
 
-        def extract_guide(inkex_path: inkex.Path):
+        def extract_guide(inkex_path: inkex.Path) -> Tuple[float, bool]:
             """
             Extracts guide offset and orientation from an inkex.Path object.
             """

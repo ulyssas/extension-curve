@@ -16,6 +16,7 @@ from .styles import VNColor, VNGradient, pathStrokeStyle
 @dataclass
 class VNPathElement(VNBaseElement):
     """Path Element properties."""
+    mask: int # 0 or 1
     fillColor: Optional[VNColor]
     fillGradient: Optional[VNGradient]
     strokeStyle: Optional[pathStrokeStyle]

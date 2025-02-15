@@ -21,6 +21,7 @@ class styledText:
     # List means different styles for each characters(upperBound)
     alignment: List[Dict]
     fillColor: List[Dict]
+    strokeStyle: Optional[List[Dict]]
     fontName: List[Dict]
     fontSize: List[Dict]
     kerning: List[Dict]
@@ -34,5 +35,5 @@ class styledText:
 class textProperty:
     # "fixedSize":{"height": float,"width": float}
     # autos don't contain values
-    textFrameLimits: Dict  # autoWidth, autoHeight, fixedSize
-    textFramePivot: Tuple[float, float]
+    textFrameLimits: Optional[Dict]  # autoWidth, autoHeight, fixedSize
+    textFramePivot: Optional[Tuple[float, float]]
