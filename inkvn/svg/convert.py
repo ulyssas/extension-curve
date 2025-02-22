@@ -4,6 +4,7 @@ inkvn Converter
 Convert the intermediate data to Inkscape read by read.py
 """
 
+import logging
 from typing import List, Optional, Tuple
 
 import inkex
@@ -138,26 +139,26 @@ class CurveConverter():
 
     def load_element(self, element: VNBaseElement) -> Optional[inkex.BaseElement]:
         """Converts an element to an SVG element."""
-        if isinstance(element, VNGroupElement):
-            return self.convert_group(element)
+        try:
+            if isinstance(element, VNGroupElement):
+                return self.convert_group(element)
 
-        elif isinstance(element, VNImageElement):
-            return self.convert_image(element)
+            elif isinstance(element, VNImageElement):
+                return self.convert_image(element)
 
-        elif isinstance(element, VNPathElement):
-            return self.convert_path(element)
+            elif isinstance(element, VNPathElement):
+                return self.convert_path(element)
 
-        elif isinstance(element, VNTextElement):
-            # TODO TEXT
-            inkex.utils.debug(f'{element.name}: Text has been successfully parsed, but text import is not supported yet.')
-            return self.convert_base(element)
+            elif isinstance(element, VNTextElement):
+                # inkex.utils.debug(f'{element.name}: Text has been successfully parsed, but text import is not supported yet.')
+                return self.convert_text(element)
 
-        elif isinstance(element, VNBaseElement):
-            return self.convert_base(element)  # will be empty path element
+            elif isinstance(element, VNBaseElement):
+                return self.convert_base(element)  # will be empty path element
 
-        else:
-            inkex.utils.debug(f"Unsupported element type: {type(element)}")
-            return None
+        except Exception as e:
+            logging.error(f"Error converting element: {e}", exc_info=True)
+
 
     def convert_group(self, group_element: VNGroupElement) -> inkex.Group:
         """
@@ -319,6 +320,92 @@ class CurveConverter():
             path.style["fill"] = "none"
 
         return path
+
+    def convert_text(self, text_element: VNTextElement) -> inkex.TextElement:
+        """Converts a VNTextElement to an SVG Text (inkex.TextElement)."""
+        text = inkex.TextElement()
+
+        # transform
+        if not self.has_transform_applied and text_element.localTransform is not None:
+            text.transform = text_element.localTransform.convert_transform()
+
+        # BaseElement
+        text.label = text_element.name
+        text.style["opacity"] = text_element.opacity
+        text.style["mix-blend-mode"] = text_element.convert_blend()
+        text.style["display"] = "none" if text_element.isHidden else "inline"
+        if text_element.isLocked:
+            text.set("sodipodi:insensitive", "true")
+
+        # blur
+        if text_element.blur > 0:
+            self.set_blur(text, text_element.convert_blur())
+
+        # TODO Text support is not in a good shape
+        if text_element.string and text_element.styledText:
+            offset = 0
+            y_offset = 0 # offsets for paragraphs
+            line_height = 1.2 # default margin
+
+            for styled in text_element.styledText:
+                substring = text_element.string[offset:offset + styled.length]
+                paragraphs = substring.split("\n")
+                font_name = styled.fontName.replace("-", " ")
+
+                for para in paragraphs:
+                    if not para.strip():
+                        continue # ignore whitespace
+
+                    # create line tspan
+                    line_tspan = inkex.Tspan()
+                    line_tspan.set("sodipodi:role", "line")
+                    line_tspan.set("x", "0")
+                    line_tspan.set("y", f"{y_offset}px")
+
+                    lines = para.split("\n")
+                    for i, line in enumerate(lines):
+                        # ignore whitespace
+                        if not line.strip():
+                            continue
+
+                        tspan = inkex.Tspan()
+                        tspan.text = line
+
+                        tspan.style["font-family"] = font_name
+                        tspan.style["font-size"] = f"{styled.fontSize}px"
+                        tspan.style["letter-spacing"] = f"{styled.kerning}px"
+
+                        # fill
+                        if styled.fillColor:
+                            self.set_fill_color_styles(tspan, styled.fillColor)
+                        #elif styled.fillGradient:
+                        #    self.set_fill_grad_styles(tspan, styled.fillGradient)
+                        else:
+                            tspan.style["fill"] = "none"
+
+                        ## stroke
+                        #if styled.strokeStyle:
+                        #    self.set_stroke_styles(tspan, styled.strokeStyle)
+
+                        ## decorations
+                        #if styled.underline:
+                        #    tspan.style["text-decoration"] = "underline"
+                        #if styled.strikethrough:
+                        #    tspan.style["text-decoration"] = "line-through"
+
+                        # 1行目以外は `dy` を設定して下にずらす
+                        if i > 0:
+                            tspan.set("x", "0")
+                            tspan.set("dy", f"{styled.fontSize * line_height}px")
+
+                        line_tspan.append(tspan)
+
+                    text.append(line_tspan)
+                    y_offset += styled.fontSize * line_height * len(lines)
+
+                offset += styled.length
+
+        return text
 
     def convert_base(self, base_element: VNBaseElement) -> inkex.PathElement:
         """Converts a VNBaseElement to an empty SVG path (inkex.PathElement)."""

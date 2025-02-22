@@ -98,14 +98,14 @@ class VNGradient:
     Represents a gradient with gradient and optional transform.
     """
     def __init__(
-        self, start_end: Dict[str, Any], transform_matrix: Optional[List[float]],
+        self, fill_transform: Dict[str, Any], transform_matrix: Optional[List[float]],
         stops: List[Dict], typeRawValue: int
     ):
         """
         Initializes the Gradient object from a Linearity Curve data.
         """
         self.gradient: inkex.Gradient = self._convert_gradient(
-            tr=start_end,
+            tr=fill_transform,
             stops=stops,
             type_value=typeRawValue
         )
@@ -160,8 +160,10 @@ class VNGradient:
 
 @dataclass
 class pathStrokeStyle:
-    """Linearity Curve stroke format."""
-    basicStrokeStyle: basicStrokeStyle
+    """
+    Linearity Curve stroke format for path and text.
+    """
+    basicStrokeStyle: Optional[basicStrokeStyle]
     color: VNColor
     width: float
 

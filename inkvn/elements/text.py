@@ -8,27 +8,46 @@ from dataclasses import dataclass
 from typing import Dict, List, Optional, Tuple
 
 from .base import VNBaseElement
+from .styles import VNColor, VNGradient, pathStrokeStyle
 
 
 @dataclass
 class VNTextElement(VNBaseElement):
-    styledText: Optional[styledText]
+    """rich text data."""
+    string: str
+    transform: Optional[List[float]] # matrix(legacy)
+    styledText: Optional[List[singleStyledText]]
     textProperty: Optional[textProperty]
 
 
 @dataclass
-class styledText:
-    # List means different styles for each characters(upperBound)
-    alignment: List[Dict]
-    fillColor: List[Dict]
-    strokeStyle: Optional[List[Dict]]
-    fontName: List[Dict]
-    fontSize: List[Dict]
-    kerning: List[Dict]
-    lineHeight: List[Dict]
-    strikethrough: List[Dict]
-    string: str
-    underline: List[Dict]
+class singleStyledText:
+    length: int # effectiveRange
+    fontName: str
+    fontSize: float
+    alignment: int
+    kerning: float
+    lineHeight: Optional[Dict]
+    fillColor: Optional[VNColor]
+    fillGradient: Optional[VNGradient]
+    strokeStyle: Optional[pathStrokeStyle]
+    strikethrough: bool
+    underline: bool
+
+    def convert_text_anchor(self):
+        """
+        alignment to SVG text-anchor
+
+        0: Left
+        1: Center
+        2: Right
+        3: Justify <- how do i do this?
+        """
+        return {
+            0: "start",
+            1: "middle",
+            2: "end"
+        }.get(self.alignment, "start")
 
 
 @dataclass

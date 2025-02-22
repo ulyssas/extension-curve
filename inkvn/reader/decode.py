@@ -6,11 +6,15 @@ converts Linearity Curve (5.x) JSON data to inkvn.
 Needs files that are fileFormatVersion 30~39.
 """
 
+import base64
+import logging
 from typing import Any, Dict, List, Optional
 
 import inkex
 
 import inkvn.reader.extract as ext
+import inkvn.reader.text as t
+from inkvn.utils import NSKeyedUnarchiver
 
 from ..elements.artboard import VNArtboard, VNLayer, Frame
 from ..elements.base import VNBaseElement, VNTransform
@@ -18,7 +22,7 @@ from ..elements.guide import VNGuideElement
 from ..elements.group import VNGroupElement
 from ..elements.image import VNImageElement
 from ..elements.path import VNPathElement, pathGeometry
-from ..elements.text import VNTextElement, styledText, textProperty
+from ..elements.text import VNTextElement, singleStyledText, textProperty
 from ..elements.styles import VNColor, VNGradient, pathStrokeStyle, basicStrokeStyle
 
 
@@ -124,77 +128,83 @@ def read_element(archive: Any, gid_json: Dict, element: Dict) -> VNBaseElement:
         "localTransform": None
     }
 
-    # localTransform (BaseElement)
-    local_transform_id = element["localTransformId"]
-    if local_transform_id is not None:
-        base_element_data["localTransform"] = VNTransform(
-            **get_json_element(gid_json, "localTransforms", local_transform_id)
-        )
+    try:
+        # localTransform (BaseElement)
+        local_transform_id = element["localTransformId"]
+        if local_transform_id is not None:
+            base_element_data["localTransform"] = VNTransform(
+                **get_json_element(gid_json, "localTransforms", local_transform_id)
+            )
 
-    # Image (ImageElement)
-    image_id = element.get("subElement", {}).get("image", {}).get("_0")
-    if image_id is not None:
-        return read_image(archive, gid_json, image_id, base_element_data)
+        # Image (ImageElement)
+        image_id = element.get("subElement", {}).get("image", {}).get("_0")
+        if image_id is not None:
+            return read_image(archive, gid_json, image_id, base_element_data)
 
-    # Curve 5.13.0, format 40
-    abst_image_id = element.get("subElement", {}).get("abstractImage", {}).get("_0")
-    if abst_image_id is not None:
-        return read_image(archive, gid_json, abst_image_id, base_element_data)
+        # Curve 5.13.0, format 40
+        abst_image_id = element.get("subElement", {}).get("abstractImage", {}).get("_0")
+        if abst_image_id is not None:
+            return read_image(archive, gid_json, abst_image_id, base_element_data)
 
-    # Stylable (either PathElement or TextElement)
-    stylable_id = element.get("subElement", {}).get("stylable", {}).get("_0")
-    if stylable_id is not None:
-        stylable = get_json_element(gid_json, "stylables", stylable_id)
+        # Stylable (either PathElement or TextElement)
+        stylable_id = element.get("subElement", {}).get("stylable", {}).get("_0")
+        if stylable_id is not None:
+            stylable = get_json_element(gid_json, "stylables", stylable_id)
 
-        # clipping mask
-        mask = stylable.get("mask", 0)
+            # clipping mask
+            mask = stylable.get("mask", 0)
 
-        # will be used to return PathElement
-        fill_id = None
-        stroke_style_id = None
-        abstract_path_id = None
+            # will be used to return PathElement
+            fill_id = None
+            stroke_style_id = None
+            abstract_path_id = None
 
-        # singleStyles (based on Curve 5.1.2)
-        single_style_id = stylable.get("subElement", {}).get("singleStyle", {}).get("_0")
-        if single_style_id is not None:
-            single_style = get_json_element(gid_json, "singleStyles", single_style_id)
-            # old abstractPath lacks these ids below
-            abstract_path_id = single_style.get("subElement")
-            stroke_style_id = stylable.get("strokeStyleId")
-            fill_id = single_style.get("fillId")
+            # singleStyles (based on Curve 5.1.2)
+            single_style_id = stylable.get("subElement", {}).get("singleStyle", {}).get("_0")
+            if single_style_id is not None:
+                single_style = get_json_element(gid_json, "singleStyles", single_style_id)
+                # old abstractPath lacks these ids below
+                abstract_path_id = single_style.get("subElement")
+                stroke_style_id = stylable.get("strokeStyleId")
+                fill_id = single_style.get("fillId")
 
-        # Abstract Path (PathElement)
-        sub_element = stylable.get("subElement", {})
-        if "abstractPath" in sub_element:
-            abstract_path_id = sub_element["abstractPath"].get("_0")
-        if abstract_path_id is not None:
-            path_element_data = {
-                "abst_path": abstract_path_id,
-                "stylable": stylable,
-                "mask": mask,
-                "stroke": stroke_style_id,
-                "fill": fill_id,
-            }
-            return read_abst_path(gid_json, path_element_data, base_element_data)
+            # Abstract Path (PathElement)
+            sub_element = stylable.get("subElement", {})
+            if "abstractPath" in sub_element:
+                abstract_path_id = sub_element["abstractPath"].get("_0")
+            if abstract_path_id is not None:
+                path_element_data = {
+                    "abst_path": abstract_path_id,
+                    "stylable": stylable,
+                    "mask": mask,
+                    "stroke": stroke_style_id,
+                    "fill": fill_id,
+                }
+                return read_abst_path(gid_json, path_element_data, base_element_data)
 
-        # Abstract Text (TextElement), only supports new text format, Curve 5.1.2 does not work.
-        # TODO Add support for Text, format 44
-        abstract_text_id = stylable.get("subElement", {}).get("abstractText", {}).get("_0")
-        if abstract_text_id is not None:
-            return read_abst_text(gid_json, abstract_text_id, base_element_data)
+            # Abstract Text (TextElement)
+            abstract_text_id = stylable.get("subElement", {}).get("abstractText", {}).get("_0")
+            if abstract_text_id is not None:
+                return read_abst_text(gid_json, abstract_text_id, base_element_data)
 
-    # Group (GroupElement)
-    group_id = element.get("subElement", {}).get("group", {}).get("_0")
-    if group_id is not None:
-        return read_group(archive, gid_json, group_id, base_element_data)
+        # Group (GroupElement)
+        group_id = element.get("subElement", {}).get("group", {}).get("_0")
+        if group_id is not None:
+            return read_group(archive, gid_json, group_id, base_element_data)
 
-    # Guide (GuideElement)
-    guide_id = element.get("subElement", {}).get("guideLine", {}).get("_0")
-    if guide_id is not None:
-        guide = get_json_element(gid_json, "guideLines", guide_id)
-        return VNGuideElement(**guide, **base_element_data)
+        # Guide (GuideElement)
+        guide_id = element.get("subElement", {}).get("guideLine", {}).get("_0")
+        if guide_id is not None:
+            guide = get_json_element(gid_json, "guideLines", guide_id)
+            return VNGuideElement(**guide, **base_element_data)
 
-    # if the element is unknown type:
+        # if the element is unknown type:
+        return VNBaseElement(**base_element_data)
+
+    except Exception as e:
+        logging.error(f"Error reading element: {e}", exc_info=True)
+
+    # if the element is unknown type or an error occurred:
     return VNBaseElement(**base_element_data)
 
 
@@ -227,13 +237,14 @@ def read_image(archive: Any, gid_json: Dict, image_id: int, base_element: Dict) 
 
 
 def read_abst_text(gid_json: Dict, abstract_text_id: int, base_element: Dict) -> VNTextElement | VNBaseElement:
+    # TODO Add support for Text, format 44
     abstract_text = get_json_element(gid_json, "abstractTexts", abstract_text_id)
     # check if the text is new format
     if abstract_text.get("attributedText") is None:
-        inkex.utils.debug(f'{base_element["name"]}: Text is not supported and will be ignored.')
         # Which one is which?
         styled_text_id = abstract_text.get("textId")
         text_id = abstract_text.get("subElement", {}).get("text", {}).get("_0")
+        stroke_style_id = abstract_text.get("strokeStyleId")
 
         # will be used to return TextElement
         text_property = None
@@ -245,30 +256,76 @@ def read_abst_text(gid_json: Dict, abstract_text_id: int, base_element: Dict) ->
             text_property = textProperty(
                 **text_property
             )
+
+        if stroke_style_id is not None:
+            # stroke_style only contains basicStrokeStyle
+            stroke_style = get_json_element(gid_json, "textStrokeStyles", stroke_style_id)
+            stroke_style = basicStrokeStyle(**stroke_style)
+
         # styledTexts
         if styled_text_id is not None:
             styled_text = get_json_element(gid_json, "styledTexts", styled_text_id)
-            inkex.utils.debug(f'{styled_text.get("fontName")} is the font')
-            styled_text = styledText(
-                alignment=styled_text.get("alignment"),
-                fillColor=styled_text.get("fillColor"),
-                strokeStyle=styled_text.get("strokeStyle"), # optional
-                fontName=styled_text.get("fontName"),
-                fontSize=styled_text.get("fontSize"),
-                kerning=styled_text.get("kerning"),
-                lineHeight=styled_text.get("lineHeight"),
-                strikethrough=styled_text.get("strikethrough"),
-                string=styled_text.get("string"),
-                underline=styled_text.get("underline")
-            )
+            string = styled_text["string"]
+            styles = t.decode_new_text(styled_text)
+            #inkex.utils.debug(f"styles: {styles}")
+            #inkex.utils.debug(f"string: {string}")
+
+            styled_text_list: List[singleStyledText] = []
+            for style in styles:
+                color = None
+                # color
+                if style.get("fillColor") is not None:
+                    color = VNColor(style["fillColor"])
+                # stroke # TODO text strokestyle(fix reader/text.py)
+                #if style.get("strokeStyle") is not None:
+                #    stroke = style["strokeStyle"]
+                #    stroke = pathStrokeStyle(stroke_style, stroke)
+
+                styled_text = singleStyledText(
+                    length=style.get("length"),
+                    fontName=style.get("fontName"),
+                    fontSize=style.get("fontSize"),
+                    alignment=style.get("alignment"),
+                    kerning=style.get("kerning"),
+                    lineHeight=style.get("lineHeight"),
+                    fillColor=color,
+                    fillGradient=None, # TODO gradient applies globally
+                    strokeStyle=None,
+                    strikethrough=style.get("strikethrough"),
+                    underline=style.get("underline")
+                )
+                styled_text_list.append(styled_text)
 
         return VNTextElement(
-            styledText=styled_text,
+            string=string,
+            transform=None,
+            styledText=styled_text_list,
             textProperty=text_property,
             **base_element
         )
+
+    # legacy text
     else:
-        inkex.utils.debug(f'{base_element["name"]}: Old Text format detected! Text will be ignored.')
+        # I cannot replicate textProperty in legacy format
+        text_id = abstract_text.get("subElement", {}).get("text", {}).get("_0")
+        if text_id is not None:
+            text_property = get_json_element(gid_json, "texts", text_id)
+            transform = text_property.get("transform") # matrix
+            resize_mode = text_property.get("resizeMode")
+            height = text_property.get("height")
+            width = text_property.get("width")
+
+        # styledText
+        styled_text = NSKeyedUnarchiver(base64.b64decode(abstract_text['attributedText']))
+        style = t.decode_old_text(styled_text)
+
+        #styled_text_list: List[singleStyledText] = []
+        string = styled_text["NSString"]
+
+        inkex.utils.debug(f"Decoded: {styled_text}")
+        inkex.utils.debug(f"style: {style}")
+        inkex.utils.debug(f"string: {string}")
+        inkex.utils.debug(f'{base_element["name"]}: Legacy Text format detected! Text will be ignored.')
         return VNBaseElement(**base_element)
 
 
@@ -379,7 +436,7 @@ def read_fill(gid_json: Dict, stylable: Dict, fill_id: int) -> VNGradient | VNCo
         # Newer Curve
         if gradient.get("transform") is not None:
             return VNGradient(
-                start_end=gradient["transform"],
+                fill_transform=gradient["transform"],
                 transform_matrix=None,
                 stops=gradient["gradient"]["stops"],
                 typeRawValue=gradient["gradient"]["typeRawValue"]
@@ -389,7 +446,7 @@ def read_fill(gid_json: Dict, stylable: Dict, fill_id: int) -> VNGradient | VNCo
             fill_transform_id = stylable.get("fillTransformId")
             fill_transform = get_json_element(gid_json, "fillTransforms", fill_transform_id)
             return VNGradient(
-                start_end=fill_transform,
+                fill_transform=fill_transform,
                 transform_matrix=fill_transform["transform"],
                 stops=gradient["stops"],
                 typeRawValue=gradient["typeRawValue"]

@@ -1,5 +1,6 @@
 *.pyc
 .vscode/
 inkvn/legacy
+inkvn/samples
 
 __pycache__
