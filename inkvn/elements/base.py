@@ -59,9 +59,12 @@ class VNTransform:
     shear: float = 0.0
     translation: List[float] = field(default_factory=lambda: [0.0, 0.0])
 
-    def convert_transform(self, keep_proportion=False) -> inkex.transforms.Transform:
+    def convert_transform(self, keep_proportion=False, with_scale=True) -> inkex.transforms.Transform:
         """
         Creates a transform string for the `g` element in inkex.transforms.Transform.
+
+        keep_proportion applies scaling in x axis to y axis as well.
+        with_scale determines whether to include scale or not.
         """
 
         # Extract values
@@ -82,7 +85,7 @@ class VNTransform:
             # Rotate around origin (adjust if a specific pivot is needed)
             tr.add_rotate(rotation_deg)
 
-        if sx != 1 or sy != 1:
+        if with_scale and (sx != 1 or sy != 1):
             # Scale by (sx, sy)
             if keep_proportion == True:
                 tr.add_scale(sx)

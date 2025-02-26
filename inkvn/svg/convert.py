@@ -19,7 +19,7 @@ from ..elements.guide import VNGuideElement
 from ..elements.group import VNGroupElement
 from ..elements.image import VNImageElement
 from ..elements.path import VNPathElement
-from ..elements.text import VNTextElement
+from ..elements.text import VNTextElement, singleStyledText
 from ..elements.styles import VNColor, VNGradient, pathStrokeStyle
 
 
@@ -47,13 +47,8 @@ class CurveConverter():
         New curve holds path data without transforms
         However, old curve has transforms already applied.
         I don't know exactly when the behavior has changed, so it's set to 30 as placeholder
-
-        Curve 5.12.0, format 40 confirmed(works the same as 44)
         """
-        if reader.file_version < 30:
-            self.has_transform_applied = True
-        else:
-            self.has_transform_applied = False
+        self.has_transform_applied = reader.file_version < 30
 
         first_artboard = reader.artboards[0]
 
@@ -68,6 +63,7 @@ class CurveConverter():
         self.document.addprevious(comment)
 
         # first artboard becomes the front page
+        # other artboards will be placed relative to the first one
         self.offset_x = first_artboard.frame.x
         self.offset_y = first_artboard.frame.y
 
@@ -86,7 +82,7 @@ class CurveConverter():
             )
             self.doc.getroot()
 
-    def load_page(self, root_layer: inkex.Layer, artboard: VNArtboard) -> None:
+    def load_page(self, root_layer: inkex.Layer, artboard: VNArtboard, clip_page: bool=False) -> None:
         """Convert  VNArtboard to inkex page."""
 
         # artboards have translations
@@ -114,6 +110,20 @@ class CurveConverter():
             self.set_fill_grad_styles(rect, artboard.fillGradient)
             root_layer.add(rect)
         # if fill is none, rect will be dismissed
+
+        # artboard clipping (optional), similar to Vectornator svg output.
+        if clip_page:
+            clip = inkex.ClipPath()
+            clip_rect = inkex.Rectangle.new(
+                0, 0, artboard.frame.width, artboard.frame.height
+            )
+            clip_rect.label = "page clipping"
+
+            clip.add(clip_rect)
+            self.document.defs.add(clip)
+
+            if clip is not None:
+                root_layer.style["clip-path"] = f"url(#{clip.get_id()})"
 
         # layers in the artboard
         for layer in artboard.layers:
@@ -159,48 +169,11 @@ class CurveConverter():
         except Exception as e:
             logging.error(f"Error converting element: {e}", exc_info=True)
 
-
     def convert_group(self, group_element: VNGroupElement) -> inkex.Group:
         """
         Converts a VNGroupElement to an SVG group (inkex.Group),
         or ClipPath when the group contains clipping mask.
         """
-
-        # if clipping mask is needed
-        # TODO fix mask support
-        clip_path_child = None
-        target = None
-        for child in group_element.groupElements:
-            # only allow groups with two elements for now
-            if (isinstance(child, VNPathElement)
-                and child.mask == 1
-                and len(group_element.groupElements) == 2):
-                clip_path_child = child
-                break
-            elif isinstance(child, VNPathElement) and child.mask == 1:
-                inkex.utils.debug(f"{group_element.name}: Masks with more that two elements are not supported.")
-
-        if clip_path_child:
-            # find the clip target (the other element)
-            target = None
-            for other_child in group_element.groupElements:
-                if other_child is not clip_path_child:
-                    target = self.load_element(other_child)
-                    break
-
-            clip = inkex.ClipPath()
-            clip_path_element = self.convert_path(clip_path_child)
-
-            # undoing target transform to clip path
-            if target.transform:
-                clip_path_element.transform = -target.transform
-                clip_path_element.apply_transform()
-
-            clip.add(clip_path_element)
-            self.document.defs.add(clip)
-
-            if target is not None:
-                target.style["clip-path"] = f"url(#{clip.get_id()})"
 
         group = inkex.Group()
 
@@ -218,13 +191,29 @@ class CurveConverter():
         if group_element.blur > 0:
             self.set_blur(group, group_element.convert_blur())
 
-        if target is not None:
-            group.add(target)
-        else:
-            for child in group_element.groupElements:
-                svg_element = self.load_element(child)
-                if svg_element is not None:
-                    group.add(svg_element)
+        # clipping mask
+        clip_path_child = None
+        clip = None
+        for child in group_element.groupElements:
+            # find the clipping mask
+            if (isinstance(child, VNPathElement) and child.mask == 1):
+                clip_path_child = child
+                break
+
+        if clip_path_child:
+            clip = inkex.ClipPath()
+            clip_path_element = self.convert_path(clip_path_child)
+
+            clip.add(clip_path_element)
+            self.document.defs.add(clip)
+
+        if clip is not None:
+            group.style["clip-path"] = f"url(#{clip.get_id()})"
+
+        for child in group_element.groupElements:
+            svg_element = self.load_element(child)
+            if svg_element is not None:
+                group.add(svg_element)
 
         return group
 
@@ -326,8 +315,11 @@ class CurveConverter():
         text = inkex.TextElement()
 
         # transform
-        if not self.has_transform_applied and text_element.localTransform is not None:
-            text.transform = text_element.localTransform.convert_transform()
+        if text_element.transform is not None:
+            text.transform = text_element.transform
+        elif not self.has_transform_applied and text_element.localTransform is not None:
+            # remove scale to prevent over-compressed look
+            text.transform = text_element.localTransform.convert_transform(with_scale=False)
 
         # BaseElement
         text.label = text_element.name
@@ -344,66 +336,59 @@ class CurveConverter():
         # TODO Text support is not in a good shape
         if text_element.string and text_element.styledText:
             offset = 0
-            y_offset = 0 # offsets for paragraphs
-            line_height = 1.2 # default margin
+            y_offset = 0
+            line_height = 1.2  # default paragraph margin
 
-            for styled in text_element.styledText:
-                substring = text_element.string[offset:offset + styled.length]
-                paragraphs = substring.split("\n")
-                font_name = styled.fontName.replace("-", " ")
+            paragraphs = text_element.string.split("\n")
+            styled_index = 0  # current styledText
+            remaining_length = 0  # remaining range of styledText
 
-                for para in paragraphs:
-                    if not para.strip():
-                        continue # ignore whitespace
+            for para in paragraphs:
+                # line-tspan
+                line_tspan = inkex.Tspan()
+                line_tspan.set("sodipodi:role", "line")
+                line_tspan.set("x", "0")
+                line_tspan.set("y", f"{y_offset}px")
 
-                    # create line tspan
-                    line_tspan = inkex.Tspan()
-                    line_tspan.set("sodipodi:role", "line")
-                    line_tspan.set("x", "0")
-                    line_tspan.set("y", f"{y_offset}px")
+                para_offset = 0  # offset in para
+                while para_offset < len(para)+1:
+                    # break the loop if there's no remaining styledText
+                    if styled_index >= len(text_element.styledText):
+                        break
 
-                    lines = para.split("\n")
-                    for i, line in enumerate(lines):
-                        # ignore whitespace
-                        if not line.strip():
-                            continue
+                    styled = text_element.styledText[styled_index]
 
-                        tspan = inkex.Tspan()
-                        tspan.text = line
+                    # skip styledText which contains only "\n"
+                    #inkex.utils.debug(f"{text_element.string[offset-1]}, {text_element.string[offset]}, {text_element.string[offset+1]}")
+                    while styled.length == 1 and text_element.string[offset] == "\n":
+                        offset += 1
+                        styled_index += 1
+                        if styled_index >= len(text_element.styledText):
+                            break
+                        styled = text_element.styledText[styled_index]
 
-                        tspan.style["font-family"] = font_name
-                        tspan.style["font-size"] = f"{styled.fontSize}px"
-                        tspan.style["letter-spacing"] = f"{styled.kerning}px"
+                    if remaining_length <= 0: # move on to next element
+                        remaining_length = styled.length
+                        styled_index += 1
 
-                        # fill
-                        if styled.fillColor:
-                            self.set_fill_color_styles(tspan, styled.fillColor)
-                        #elif styled.fillGradient:
-                        #    self.set_fill_grad_styles(tspan, styled.fillGradient)
-                        else:
-                            tspan.style["fill"] = "none"
+                    # apply style until there's no more text in para
+                    apply_length = min(len(para)+1 - para_offset, remaining_length)
+                    substring = para[para_offset:para_offset + apply_length]
+                    #inkex.utils.debug(f"sub {substring}")
 
-                        ## stroke
-                        #if styled.strokeStyle:
-                        #    self.set_stroke_styles(tspan, styled.strokeStyle)
+                    tspan = inkex.Tspan()
+                    tspan.text = substring
+                    self.set_tspan_style(tspan, styled)
 
-                        ## decorations
-                        #if styled.underline:
-                        #    tspan.style["text-decoration"] = "underline"
-                        #if styled.strikethrough:
-                        #    tspan.style["text-decoration"] = "line-through"
+                    line_tspan.append(tspan)
 
-                        # 1行目以外は `dy` を設定して下にずらす
-                        if i > 0:
-                            tspan.set("x", "0")
-                            tspan.set("dy", f"{styled.fontSize * line_height}px")
+                    # update offset
+                    para_offset += apply_length
+                    remaining_length -= apply_length
 
-                        line_tspan.append(tspan)
-
-                    text.append(line_tspan)
-                    y_offset += styled.fontSize * line_height * len(lines)
-
-                offset += styled.length
+                text.append(line_tspan)
+                y_offset += styled.fontSize * line_height  # last font decides line height
+                offset += len(para)+1
 
         return text
 
@@ -446,7 +431,6 @@ class CurveConverter():
         """Apply fillGradient to inkex.BaseElement."""
         self.document.defs.add(fill.gradient)
         elem.style["fill"] = f"url(#{fill.gradient.get_id()})"
-        # elem.style["fill-opacity"] = fill.alpha # ??
         elem.style["fill-rule"] = "nonzero"
 
     def set_blur(self, elem: inkex.BaseElement, blur: inkex.Filter.GaussianBlur) -> None:
@@ -485,6 +469,31 @@ class CurveConverter():
             "inkscape:path-effect", f"{path_effect.get_id(1)}"
         )
         elem.attrib.pop("d", None)  # delete "d", Inkscape auto-generates LPE path
+
+    def set_tspan_style(self, elem: inkex.Tspan, styled: singleStyledText) -> None:
+        font_name = styled.fontName.replace("-", " ")
+
+        elem.style["font-family"] = font_name
+        elem.style["font-size"] = f"{styled.fontSize}px"
+        elem.style["letter-spacing"] = f"{styled.kerning}px"
+
+        # fill
+        if styled.fillColor:
+            self.set_fill_color_styles(elem, styled.fillColor)
+        #elif styled.fillGradient:
+        #    self.set_fill_grad_styles(tspan, styled.fillGradient)
+        else:
+            elem.style["fill"] = "none"
+
+        ## stroke
+        #if styled.strokeStyle:
+        #    self.set_stroke_styles(tspan, styled.strokeStyle)
+
+        ## decorations
+        #if styled.underline:
+        #    tspan.style["text-decoration"] = "underline"
+        #if styled.strikethrough:
+        #    tspan.style["text-decoration"] = "line-through"
 
     def add_guide(self, guide_element: VNBaseElement, offset: inkex.Vector2d) -> None:
         """

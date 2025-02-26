@@ -103,6 +103,9 @@ def _unserialize(o: dict, serialized: dict, removeClassName: bool, plist_top: bo
 
 
 def _decode_attrib_info(attr_bytes: bytes) -> List[Dict]:
+    """
+    Tries to decode NSAttributeInfo in KeyedArchived NSAttributedString.
+    """
     # TODO decode_attrib_info(legacy text) does not work for longer texts
     attr_data = []
     offset = 0
@@ -117,7 +120,7 @@ def _decode_attrib_info(attr_bytes: bytes) -> List[Dict]:
             offset += 2
         else:
             break
-    debug(attr_data)
+
     return attr_data
 
 
@@ -148,7 +151,6 @@ def NSKeyedUnarchiver(plist, removeClassName=True):
     if len(unserialized) == 1 and "root" in unserialized:
         # Unserialized data contains only 1 object, so no need to nest it under 'root'
         unserialized = unserialized["root"]
-    debug(unserialized)
 
     if unserialized.get("NSAttributeInfo") is not None:
         attr_info = unserialized["NSAttributeInfo"]

@@ -4,7 +4,6 @@ inkvn Reader
 Reads Linearity Curve / Vectornator files and convert them into intermediate data.
 """
 
-
 import logging
 import zipfile
 from typing import List
@@ -42,6 +41,8 @@ class CurveReader:
         self.app_version = document["appVersion"]
         self.file_version = manifest["fileFormatVersion"]
         artboard_paths = drawing_data["artboardPaths"]
+
+        # different file versions have incompatible structure, reporting App version & File version greatly helps
         inkex.utils.debug(f"App version: {self.app_version}, File version: {self.file_version}, File name: {self.archive.filename}")
 
         assert len(artboard_paths), "No artboard paths found in the document."
@@ -55,13 +56,11 @@ class CurveReader:
 
             # if the file is Linearity Curve
             if self.check_if_curve(self.app_version):
-                # inkex.utils.debug(f"Curve version: {version}.")
                 artboard = d.read_artboard(self.archive, gid_json)
                 self.artboards.append(artboard)
 
             # if the file is Vectornator
             else:
-                # inkex.utils.debug(f"Legacy Curve / Vectornator version: {version}.")
                 artboard = dvn.read_vn_artboard(self.archive, gid_json)
                 self.artboards.append(artboard)
 
