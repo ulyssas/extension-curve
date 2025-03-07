@@ -43,7 +43,7 @@ class VNBaseElement:
     def convert_blur(self) -> inkex.Filter.GaussianBlur:
         """Returns inkex GaussianBlur."""
         """
-        TODO Blur does not work like it should.
+        FIXME Blur does not work like it should.
         divided by 3 because I don't know
         """
         return inkex.Filter.GaussianBlur.new(

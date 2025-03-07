@@ -106,7 +106,7 @@ def _decode_attrib_info(attr_bytes: bytes) -> List[Dict]:
     """
     Tries to decode NSAttributeInfo in KeyedArchived NSAttributedString.
     """
-    # TODO decode_attrib_info(legacy text) does not work for longer texts
+    # FIXME decode_attrib_info(legacy text) does not work for longer texts
     attr_data = []
     offset = 0
     while offset < len(attr_bytes):

@@ -38,7 +38,7 @@ class CurveConverter():
         self.offset_x: float
         self.offset_y: float
 
-    def convert(self, reader: CurveReader) -> None:
+    def convert(self, reader: CurveReader, clip_page: bool=False) -> None:
         self.reader = reader
 
         """
@@ -78,7 +78,7 @@ class CurveConverter():
             page.set("inkscape:label", target_artboard.title)
 
             self.load_page(
-                self.document.add(inkex.Layer.new(label=target_artboard.title)), target_artboard
+                self.document.add(inkex.Layer.new(label=target_artboard.title)), target_artboard, clip_page
             )
             self.doc.getroot()
 
@@ -333,11 +333,10 @@ class CurveConverter():
         if text_element.blur > 0:
             self.set_blur(text, text_element.convert_blur())
 
-        # TODO Text support is not in a good shape
         if text_element.string and text_element.styledText:
-            offset = 0
+            offset = 0 # global offset(letter count)
             y_offset = 0
-            line_height = 1.2  # default paragraph margin
+            line_height = 1.0  # default paragraph margin
 
             paragraphs = text_element.string.split("\n")
             styled_index = 0  # current styledText
@@ -345,10 +344,13 @@ class CurveConverter():
 
             for para in paragraphs:
                 # line-tspan
+                # TODO how should I implement align-center/left/right?
                 line_tspan = inkex.Tspan()
                 line_tspan.set("sodipodi:role", "line")
                 line_tspan.set("x", "0")
                 line_tspan.set("y", f"{y_offset}px")
+
+                # inkex.utils.debug(f"this para: {repr(para)}")
 
                 para_offset = 0  # offset in para
                 while para_offset < len(para)+1:
@@ -359,22 +361,26 @@ class CurveConverter():
                     styled = text_element.styledText[styled_index]
 
                     # skip styledText which contains only "\n"
-                    #inkex.utils.debug(f"{text_element.string[offset-1]}, {text_element.string[offset]}, {text_element.string[offset+1]}")
-                    while styled.length == 1 and text_element.string[offset] == "\n":
-                        offset += 1
-                        styled_index += 1
-                        if styled_index >= len(text_element.styledText):
-                            break
-                        styled = text_element.styledText[styled_index]
+                    # ignore this check when offset == 0(start)
+                    if offset != 0:
+                        while (styled.length == 1
+                            and text_element.string[offset-1] == "\n"):
+                            offset += 1
+                            para_offset += 1
+                            styled_index += 1
+                            # break the loop if there's no remaining styledText
+                            if styled_index >= len(text_element.styledText):
+                                break
 
-                    if remaining_length <= 0: # move on to next element
+                            styled = text_element.styledText[styled_index]
+
+                    # set remaining_length
+                    if remaining_length <= 0:
                         remaining_length = styled.length
-                        styled_index += 1
 
-                    # apply style until there's no more text in para
+                    # apply style "until" there's no more text in para
                     apply_length = min(len(para)+1 - para_offset, remaining_length)
                     substring = para[para_offset:para_offset + apply_length]
-                    #inkex.utils.debug(f"sub {substring}")
 
                     tspan = inkex.Tspan()
                     tspan.text = substring
@@ -385,6 +391,10 @@ class CurveConverter():
                     # update offset
                     para_offset += apply_length
                     remaining_length -= apply_length
+
+                    # move on to next styledText
+                    if remaining_length <= 0:
+                        styled_index += 1
 
                 text.append(line_tspan)
                 y_offset += styled.fontSize * line_height  # last font decides line height
@@ -450,7 +460,7 @@ class CurveConverter():
             for r in corner_radius
         )
 
-        # TODO more cornerRadius work
+        # FIXME more cornerRadius work
         #  flexible="false" is how Linearity Curve behaved,
         #  but this is not optimal
         path_effect = inkex.PathEffect.new(
@@ -471,11 +481,45 @@ class CurveConverter():
         elem.attrib.pop("d", None)  # delete "d", Inkscape auto-generates LPE path
 
     def set_tspan_style(self, elem: inkex.Tspan, styled: singleStyledText) -> None:
-        font_name = styled.fontName.replace("-", " ")
+        # weight, style
+        # Condensed is not supported
+        known_styles = {
+            "Regular": ("normal", "normal"),
+            "Plain": ("normal", "normal"),
+            "Ultrajada": ("normal", "normal"),
+            "Bold": ("bold", "normal"),
+            "Italic": ("normal", "italic"),
+            "Oblique": ("normal", "oblique"),
+            "ExtraBold": ("bold", "normal"),  # ExtraBold as Bold
+            "Light": ("300", "normal"),  # numbers may not be optimal
+            "Medium": ("500", "normal"),
+            "SemiBold": ("600", "normal"),
+            "BoldOblique": ("bold", "oblique"),  # combined
+            "BoldItalic": ("bold", "italic"),
+        }
 
-        elem.style["font-family"] = font_name
+        font_parts = styled.fontName.split("-")
+
+        # font name without styling
+        base_font_parts = []
+        font_weight = "normal"
+        font_style = "normal"
+
+        for part in font_parts:
+            if part in known_styles:
+                font_weight, font_style = known_styles[part]
+            # name
+            else:
+                base_font_parts.append(part)
+
+        base_font = " ".join(base_font_parts)
+        base_font = f"'{base_font}'"
+
         elem.style["font-size"] = f"{styled.fontSize}px"
         elem.style["letter-spacing"] = f"{styled.kerning}px"
+        elem.style["font-family"] = base_font
+        elem.style["font-weight"] = font_weight
+        elem.style["font-style"] = font_style
 
         # fill
         if styled.fillColor:

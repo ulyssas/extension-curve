@@ -319,7 +319,7 @@ def read_abst_text(gid_json: Dict, abstract_text_id: int, base_element: Dict) ->
     """
     Reads Curve text element and returns VNBaseElement (not fully implemented yet).
     """
-    # TODO Add support for Text, format 44
+    # TODO Improve Text support, new format
     abstract_text = get_json_element(gid_json, "abstractTexts", abstract_text_id)
     # check if the text is new format
     if abstract_text.get("attributedText") is None:
@@ -332,10 +332,18 @@ def read_abst_text(gid_json: Dict, abstract_text_id: int, base_element: Dict) ->
         text_property = None
         styled_text = None
 
+        # textPath
+        text_path_id = abstract_text.get("subElement", {}).get("textPath", {}).get("_0")
+        if text_path_id is not None:
+            inkex.utils.debug(f'{base_element["name"]}: textOnPath is not supported.')
+
         # texts(layout??), will be named textProperty internally
         if text_id is not None:
             text_property = get_json_element(gid_json, "texts", text_id)
-            text_property = textProperty(**text_property)
+            text_property = textProperty(
+                textFrameLimits=text_property.get("textFrameLimits"),
+                textFramePivot=text_property.get("textFramePivot")
+            )
 
         # text stroke_style only contains basicStrokeStyle
         if stroke_style_id is not None:
