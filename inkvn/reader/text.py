@@ -74,7 +74,7 @@ def decode_old_text(unserialized: Dict) -> List[Dict]:
         attribute_id = length_info["attribute_id"]
 
         # checking if NSAttributeInfo has successfully parsed
-        debug(f"Checking attribute_id: {attribute_id}, styles length: {len(styles)}")
+        debug(f"Checking attribute_id for Legacy Text: {attribute_id}, styles length: {len(styles)}")
 
         if not styles or attribute_id < 0 or attribute_id >= len(styles):
             debug(f"Error: attribute_id {attribute_id} is out of range.")

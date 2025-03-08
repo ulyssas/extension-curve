@@ -178,9 +178,6 @@ def read_vn_element(archive: Any, element: Dict) -> VNBaseElement:
             # Abstract Text (TextElement)
             text_data = stylable.get("subElement", {}).get("text", {}).get("_0")
             if text_data is not None:
-                # TODO Add support for Vectornator Text
-                inkex.utils.debug(
-                    f'{base_element_data["name"]}: Vectornator Text is not supported and will be ignored.')
                 return read_vn_abst_text(text_data, base_element_data)
 
         # if the element is unknown type:
@@ -280,8 +277,12 @@ def read_vn_abst_path(path_element: Dict, base_element: Dict) -> VNPathElement:
 
 def read_vn_abst_text(text_data: Dict, base_element: Dict) -> VNBaseElement:
     """
-    Reads legacy text element and returns VNBaseElement (not implemented yet).
+    Reads legacy text element and returns VNTextElement.
     """
+    # will be used to return TextElement
+    text_property = None
+    styled_text = None
+
     # I cannot replicate textProperty in legacy format
     transform = text_data.get("transform") # matrix
     resize_mode = text_data.get("resizeMode")
@@ -290,16 +291,47 @@ def read_vn_abst_text(text_data: Dict, base_element: Dict) -> VNBaseElement:
 
     # styledText
     styled_text = NSKeyedUnarchiver(base64.b64decode(text_data['attributedText']))
-    style = t.decode_old_text(styled_text)
-
-    #styled_text_list: List[singleStyledText] = []
     string = styled_text["NSString"]
+    styles = t.decode_old_text(styled_text)
+    styled_text_list = read_styled_text(styles)
 
-    #inkex.utils.debug(f"Decoded: {styled_text}")
-    #inkex.utils.debug(f"style: {style}")
-    #inkex.utils.debug(f"string: {string}")
-    inkex.utils.debug(f'{base_element["name"]}: Vectornator Text will be ignored.')
-    return VNBaseElement(**base_element)
+    return VNTextElement(
+        string=string,
+        transform=transform,
+        styledText=styled_text_list,
+        textProperty=text_property, # TODO Illegal format
+        **base_element
+    )
+
+
+def read_styled_text(styles: List[Dict]) -> List[singleStyledText]:
+    styled_text_list: List[singleStyledText] = []
+    for style in styles:
+        color = None
+        # color
+        if style.get("fillColor") is not None:
+            color = VNColor(style["fillColor"])
+        # stroke # TODO text strokestyle(fix reader/text.py)
+        #if style.get("strokeStyle") is not None:
+        #    stroke = style["strokeStyle"]
+        #    stroke = pathStrokeStyle(stroke_style, stroke)
+
+        styled_text = singleStyledText(
+            length=style.get("length"),
+            fontName=style.get("fontName"),
+            fontSize=style.get("fontSize"),
+            alignment=style.get("alignment"),
+            kerning=style.get("kerning"),
+            lineHeight=style.get("lineHeight"),
+            fillColor=color,
+            fillGradient=None, # TODO gradient applies globally
+            strokeStyle=None,
+            strikethrough=style.get("strikethrough"),
+            underline=style.get("underline")
+        )
+        styled_text_list.append(styled_text)
+
+    return styled_text_list
 
 
 def read_vn_stroke(stylable: Dict) -> pathStrokeStyle:
