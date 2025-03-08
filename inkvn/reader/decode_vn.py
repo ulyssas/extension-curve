@@ -24,7 +24,7 @@ from ..elements.group import VNGroupElement
 from ..elements.image import VNImageElement
 from ..elements.path import VNPathElement, pathGeometry
 from ..elements.text import VNTextElement, singleStyledText, textProperty
-from ..elements.styles import VNColor, VNGradient, pathStrokeStyle, basicStrokeStyle
+from ..elements.styles import VNColor, VNGradient, pathStrokeStyle, basicStrokeStyle, styledElementData
 
 
 def read_vn_artboard(archive: Any, gid_json: Dict) -> VNArtboard:
@@ -166,19 +166,26 @@ def read_vn_element(archive: Any, element: Dict) -> VNBaseElement:
             if "abstractPath" in sub_element:
                 abstract_path = sub_element["abstractPath"].get("_0")
             if abstract_path is not None:
-                path_element_data = {
-                    "abst_path": abstract_path,
-                    "mask": mask,
-                    "stroke": stroke_style,
-                    "color": fill_color,
-                    "grad": fill_gradient,
-                }
+                path_element_data = styledElementData(
+                    styled_data=abstract_path,
+                    mask=mask,
+                    stroke=stroke_style,
+                    color=fill_color,
+                    grad=fill_gradient
+                )
                 return read_vn_abst_path(path_element_data, base_element_data)
 
             # Abstract Text (TextElement)
             text_data = stylable.get("subElement", {}).get("text", {}).get("_0")
             if text_data is not None:
-                return read_vn_abst_text(text_data, base_element_data)
+                text_element_data = styledElementData(
+                    styled_data=text_data,
+                    mask=mask,
+                    stroke=stroke_style,
+                    color=fill_color,
+                    grad=fill_gradient
+                )
+                return read_vn_abst_text(text_element_data, base_element_data)
 
         # if the element is unknown type:
         raise NotImplementedError(f'{base_element_data["name"]}: This element has unknown type.')
@@ -217,7 +224,7 @@ def read_vn_image(archive: Any, image: Dict, base_element: Dict) -> VNImageEleme
     return VNImageElement(imageData=image_data, transform=transform, **base_element)
 
 
-def read_vn_abst_path(path_element: Dict, base_element: Dict) -> VNPathElement:
+def read_vn_abst_path(path_element: styledElementData, base_element: Dict) -> VNPathElement:
     """Reads path element and returns VNPathElement."""
 
     def _add_path(path_data: Dict, path_geometry_list: List[pathGeometry]) -> None:
@@ -241,14 +248,14 @@ def read_vn_abst_path(path_element: Dict, base_element: Dict) -> VNPathElement:
             )
 
     # Path
-    path_data = path_element["abst_path"].get("subElement", {}).get("pathData", {}).get("_0")
+    path_data = path_element.styled_data.get("subElement", {}).get("pathData", {}).get("_0")
     path_geometry_list: List[pathGeometry] = []
 
     if path_data is not None:
         _add_path(path_data, path_geometry_list)
 
     # compoundPath
-    compound_path_data = path_element["abst_path"].get("subElement", {}).get("compoundPathData", {}).get("_0")
+    compound_path_data = path_element.styled_data.get("subElement", {}).get("compoundPathData", {}).get("_0")
     if compound_path_data is not None:
         # Path Geometries (subpath)
         subpaths = compound_path_data.get("subpaths")
@@ -266,19 +273,21 @@ def read_vn_abst_path(path_element: Dict, base_element: Dict) -> VNPathElement:
                 _add_path(sub_path, path_geometry_list)
 
     return VNPathElement(
-        mask=path_element["mask"],
-        fillColor=path_element["color"],
-        fillGradient=path_element["grad"],
-        strokeStyle=path_element["stroke"],
+        mask=path_element.mask,
+        fillColor=path_element.color,
+        fillGradient=path_element.grad,
+        strokeStyle=path_element.stroke,
         pathGeometries=path_geometry_list,
         **base_element
     )
 
 
-def read_vn_abst_text(text_data: Dict, base_element: Dict) -> VNBaseElement:
+def read_vn_abst_text(text_element: styledElementData, base_element: Dict) -> VNBaseElement:
     """
     Reads legacy text element and returns VNTextElement.
     """
+    text_data = text_element.styled_data
+
     # will be used to return TextElement
     text_property = None
     styled_text = None
@@ -293,7 +302,7 @@ def read_vn_abst_text(text_data: Dict, base_element: Dict) -> VNBaseElement:
     styled_text = NSKeyedUnarchiver(base64.b64decode(text_data['attributedText']))
     string = styled_text["NSString"]
     styles = t.decode_old_text(styled_text)
-    styled_text_list = read_styled_text(styles)
+    styled_text_list = read_styled_text(styles, text_element)
 
     return VNTextElement(
         string=string,
@@ -304,13 +313,18 @@ def read_vn_abst_text(text_data: Dict, base_element: Dict) -> VNBaseElement:
     )
 
 
-def read_styled_text(styles: List[Dict]) -> List[singleStyledText]:
+def read_styled_text(styles: List[Dict], global_style: styledElementData) -> List[singleStyledText]:
     styled_text_list: List[singleStyledText] = []
+    #inkex.utils.debug(styles)
     for style in styles:
         color = None
         # color
         if style.get("fillColor") is not None:
             color = VNColor(style["fillColor"])
+        # if there's no styles in text data, use global style
+        elif global_style.color is not None:
+            color = global_style.color
+
         # stroke # TODO text strokestyle(fix reader/text.py)
         #if style.get("strokeStyle") is not None:
         #    stroke = style["strokeStyle"]

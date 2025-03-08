@@ -1,5 +1,5 @@
 """
-VNColor, VNGradient, pathStrokeStyle, basicStrokeStyle
+VNColor, VNGradient, pathStrokeStyle, basicStrokeStyle, styledElementData
 """
 
 from __future__ import annotations
@@ -206,3 +206,16 @@ class basicStrokeStyle:
             2: "bevel",
         }
         return join_map.get(join, "miter")
+
+
+@dataclass
+class styledElementData:
+    """
+    Stores style attributes for text for passing to
+    read_vn_abst_path / read_vn_abst_text.
+    """
+    styled_data: Dict
+    mask: int
+    stroke: pathStrokeStyle
+    color: Optional[VNColor]
+    grad: Optional[VNGradient]

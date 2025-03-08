@@ -47,10 +47,11 @@ class pathGeometry:
                 inpt = inkex.Vector2d(node["inPoint"])
                 anchor = inkex.Vector2d(node["anchorPoint"])
 
+                # added * to add support for Inkscape 1.3
                 if prev.is_close(outpt) and inpt.is_close(anchor):
-                    path.append(inkex.paths.Line(anchor))
+                    path.append(inkex.paths.Line(*anchor))
                 else:
-                    path.append(inkex.paths.Curve(outpt, inpt, anchor))
+                    path.append(inkex.paths.Curve(*outpt, *inpt, *anchor))
 
             prev = anchor
             outpt = inkex.Vector2d(node["outPoint"])
