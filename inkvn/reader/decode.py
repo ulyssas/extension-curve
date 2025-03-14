@@ -234,6 +234,9 @@ def read_image(archive: Any, gid_json: Dict, image_id: int, base_element: Dict) 
     if image is not None:
         if image.get("imageData") is not None:
             image_data_id = image.get("imageData", {}).get("sharedFileImage", {}).get("_0")
+            # cropping
+            if image.get("cropRect") is not None:
+                inkex.utils.debug(f'{base_element["name"]}: Image cropping is not supported.')
         else: # legacy image
             image_data_id = image.get("imageDataId")
             transform = image.get("transform")

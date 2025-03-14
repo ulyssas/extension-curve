@@ -8,8 +8,6 @@ import plistlib
 import struct
 from typing import Dict, List
 
-from inkex.utils import debug
-
 
 def _unserialize(o: dict, serialized: dict, removeClassName: bool, plist_top: bool = True):
     if plist_top:

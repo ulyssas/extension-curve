@@ -43,12 +43,12 @@ class CurveReader:
         artboard_paths = drawing_data["artboardPaths"]
 
         # different file versions have incompatible structure, reporting App version & File version greatly helps
-        inkex.utils.debug(f"App version: {self.app_version}, File version: {self.file_version}, File name: {self.archive.filename}")
+        # inkex.utils.debug(f"App version: {self.app_version}, File version: {self.file_version}, File name: {self.archive.filename}")
 
         assert len(artboard_paths), "No artboard paths found in the document."
 
         # will be used later (as Inkscape attribute)
-        print(f"Unit: {units}")
+        # print(f"Unit: {units}")
 
         # Read Artboard (GUID JSON)
         for artboard_path in artboard_paths:

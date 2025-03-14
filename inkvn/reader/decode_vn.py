@@ -252,6 +252,9 @@ def read_vn_abst_path(path_element: styledElementData, base_element: Dict) -> VN
     path_geometry_list: List[pathGeometry] = []
 
     if path_data is not None:
+        text_path = path_data.get("subElement", {}).get("textPath", {}).get("_0")
+        if text_path is not None:
+            inkex.utils.debug(f'{base_element["name"]}: textOnPath is not supported.')
         _add_path(path_data, path_geometry_list)
 
     # compoundPath
