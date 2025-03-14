@@ -54,5 +54,6 @@ class singleStyledText:
 class textProperty:
     # "fixedSize":{"height": float,"width": float}
     # autos don't contain values
+    # TODO textProperty is not compatible with format 26 text
     textFrameLimits: Optional[Dict]  # autoWidth, autoHeight, fixedSize
     textFramePivot: Optional[Tuple[float, float]]

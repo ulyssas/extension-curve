@@ -4,3 +4,5 @@ inkvn/legacy
 inkvn/samples
 
 __pycache__
+
+.pytest_cache

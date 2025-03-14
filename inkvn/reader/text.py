@@ -1,7 +1,7 @@
 """
 VI text tools
 
-Decodes Latest Linearity Curve texts and turn them into simpler format.
+Decodes Linearity Curve styledTexts and turn them into simpler format.
 """
 
 
