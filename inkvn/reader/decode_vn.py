@@ -219,9 +219,10 @@ def read_vn_image(archive: Any, image: Dict, base_element: Dict) -> VNImageEleme
     image_data = ext.read_dat_from_zip(archive, image_file)
 
     # cropping
+    crop_rect = None
     if image.get("cropRect") is not None:
-        inkex.utils.debug(f'{base_element["name"]}: Image cropping is not supported.')
-    return VNImageElement(imageData=image_data, transform=transform, **base_element)
+        crop_rect = tuple(map(tuple, image.get("cropRect")))
+    return VNImageElement(imageData=image_data, transform=transform, cropRect=crop_rect, **base_element)
 
 
 def read_vn_abst_path(path_element: styledElementData, base_element: Dict) -> VNPathElement:

@@ -225,8 +225,10 @@ def read_image(archive: Any, gid_json: Dict, image_id: int, base_element: Dict) 
     # relativePath contains *.dat (bitmap data)
     # sharedFileImage doesn't exist in 5.1.1 (file version 21) document
     # Curve 5.13.0, format 40 uses abstractImage
+    # TODO format 40 support lags behind other versions(14, 19, 44)
     transform = None
     image_data_id = None
+    crop_rect = None
 
     image = get_json_element(gid_json, "images", image_id)
     abst_image = get_json_element(gid_json, "abstractImages", image_id)
@@ -236,21 +238,22 @@ def read_image(archive: Any, gid_json: Dict, image_id: int, base_element: Dict) 
             image_data_id = image.get("imageData", {}).get("sharedFileImage", {}).get("_0")
             # cropping
             if image.get("cropRect") is not None:
-                inkex.utils.debug(f'{base_element["name"]}: Image cropping is not supported.')
+                crop_rect = tuple(map(tuple, image.get("cropRect")))
         else: # legacy image
             image_data_id = image.get("imageDataId")
             transform = image.get("transform")
 
     elif abst_image is not None:
-        # cropping
-        if abst_image.get("cropRect") is not None:
-            inkex.utils.debug(f'{base_element["name"]}: Image cropping is not supported.')
         image_data_id = abst_image.get("subElement", {}).get("image", {}).get("_0")
         transform = abst_image.get("transform")
 
+        # cropping
+        if abst_image.get("cropRect") is not None:
+            crop_rect = tuple(map(tuple, abst_image.get("cropRect")))
+
     image_file = get_json_element(gid_json, "imageDatas", image_data_id)["relativePath"]
     image_data = ext.read_dat_from_zip(archive, image_file)
-    return VNImageElement(imageData=image_data, transform=transform, **base_element)
+    return VNImageElement(imageData=image_data, transform=transform, cropRect=crop_rect, **base_element)
 
 
 def read_abst_path(gid_json: Dict, path_element: Dict, base_element: Dict) -> VNPathElement:

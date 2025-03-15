@@ -217,7 +217,7 @@ class CurveConverter():
 
         return group
 
-    def convert_image(self, image_element: VNImageElement) -> inkex.Image:
+    def convert_image(self, image_element: VNImageElement) -> inkex.Image | inkex.Group:
         """Converts a VNImageElement to an SVG image (inkex.Image)."""
         image = inkex.Image()
 
@@ -248,6 +248,19 @@ class CurveConverter():
         )
         image.set("width", width)
         image.set("height", height)
+
+        # image cropping with clipping mask
+        if image_element.cropRect is not None:
+            clip = inkex.ClipPath()
+            clip_element = image_element.convert_crop_rect()
+
+            # undoing target transform to clip path
+            if image.transform:
+                clip_element.transform = -image.transform
+
+            clip.add(clip_element)
+            self.document.defs.add(clip)
+            image.style["clip-path"] = f"url(#{clip.get_id()})"
 
         return image
 
