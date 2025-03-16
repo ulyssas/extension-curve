@@ -9,7 +9,7 @@ Needs files that are fileFormatVersion 30~39.
 
 import base64
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union
 
 import inkex
 
@@ -343,7 +343,7 @@ def read_abst_path(
 
 def read_abst_text(
     gid_json: Dict, abstract_text_id: int, base_element: Dict
-) -> VNTextElement | VNBaseElement:
+) -> Union[VNTextElement, VNBaseElement]:
     """
     Reads Curve text element and returns VNTextElement.
     """
@@ -408,9 +408,9 @@ def read_abst_text(
         if text_id is not None:
             text_property = get_json_element(gid_json, "texts", text_id)
             transform = text_property.get("transform")  # matrix
-            resize_mode = text_property.get("resizeMode")
-            height = text_property.get("height")
-            width = text_property.get("width")
+            # resize_mode = text_property.get("resizeMode")
+            # height = text_property.get("height")
+            # width = text_property.get("width")
 
         # styledText
         styled_text = NSKeyedUnarchiver(
@@ -486,7 +486,7 @@ def read_stroke(gid_json: Dict, stroke_id: int) -> pathStrokeStyle:
 
 def read_fill(
     gid_json: Dict, stylable: Dict, fill_id: int
-) -> VNGradient | VNColor | None:
+) -> Union[VNGradient, VNColor, None]:
     """Reads fill data and returns as class."""
     color: Dict = (
         get_json_element(gid_json, "fills", fill_id).get("color", {}).get("_0")

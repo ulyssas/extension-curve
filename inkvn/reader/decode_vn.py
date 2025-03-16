@@ -9,7 +9,7 @@ Needs more Vectornator files for reference
 
 import base64
 import logging
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Union
 
 import inkex
 
@@ -315,9 +315,9 @@ def read_vn_abst_text(
 
     # I cannot replicate textProperty in legacy format
     transform = text_data.get("transform")  # matrix
-    resize_mode = text_data.get("resizeMode")
-    height = text_data.get("height")
-    width = text_data.get("width")
+    # resize_mode = text_data.get("resizeMode")
+    # height = text_data.get("height")
+    # width = text_data.get("width")
 
     # styledText
     styled_text = NSKeyedUnarchiver(base64.b64decode(text_data["attributedText"]))
@@ -390,7 +390,7 @@ def read_vn_stroke(stylable: Dict) -> pathStrokeStyle:
 
 def read_vn_fill(
     stylable: Dict, single_style: Dict = None
-) -> VNGradient | VNColor | None:
+) -> Union[VNGradient, VNColor, None]:
     """Reads fill data and returns as class."""
     # fill
     fill_data = stylable.get("fill")

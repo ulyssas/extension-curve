@@ -5,7 +5,7 @@ VNImageElement
 import base64
 from dataclasses import dataclass
 from io import BytesIO
-from typing import List, Optional, Tuple
+from typing import List, Optional, Tuple, Union
 
 import inkex
 from PIL import Image
@@ -37,7 +37,7 @@ class VNImageElement(VNBaseElement):
         image = Image.open(BytesIO(binary_data))
         return image.width, image.height
 
-    def convert_crop_rect(self) -> inkex.Rectangle | None:
+    def convert_crop_rect(self) -> Union[inkex.Rectangle, None]:
         if self.cropRect is not None:
             width, height = self.cropRect[1]
             x, y = self.cropRect[0]

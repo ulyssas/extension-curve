@@ -5,7 +5,7 @@ Convert the intermediate data to Inkscape read by read.py
 """
 
 import logging
-from typing import List, Optional, Tuple
+from typing import List, Optional, Tuple, Union
 
 import inkex
 from inkex.base import SvgOutputMixin
@@ -219,7 +219,9 @@ class CurveConverter:
 
         return group
 
-    def convert_image(self, image_element: VNImageElement) -> inkex.Image | inkex.Group:
+    def convert_image(
+        self, image_element: VNImageElement
+    ) -> Union[inkex.Image, inkex.Group]:
         """Converts a VNImageElement to an SVG image (inkex.Image)."""
         image = inkex.Image()
 
