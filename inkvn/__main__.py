@@ -28,7 +28,7 @@ try:
 except ImportError:
     # This is suggested by https://docs.python-guide.org/writing/structure/.
     sys.path.insert(0, PARENT)
-    #raise ImportError(f"{HERE}, {PARENT}")
+    # raise ImportError(f"{HERE}, {PARENT}")
     try:
         from inkvn.vninput import main
     except ImportError:

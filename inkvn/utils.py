@@ -9,7 +9,9 @@ import struct
 from typing import Dict, List
 
 
-def _unserialize(o: dict, serialized: dict, removeClassName: bool, plist_top: bool = True):
+def _unserialize(
+    o: dict, serialized: dict, removeClassName: bool, plist_top: bool = True
+):
     if plist_top:
         reassembled = copy.deepcopy(o)
     else:
@@ -89,7 +91,7 @@ def _unserialize(o: dict, serialized: dict, removeClassName: bool, plist_top: bo
                         )
                     if removeClassName and isinstance(reassembled[k], dict):
                         # Remove visual polution
-                        if "$class" in reassembled[k]: # check if it's there
+                        if "$class" in reassembled[k]:  # check if it's there
                             del reassembled[k]["$class"]
 
                 finished = True
@@ -111,10 +113,12 @@ def _decode_attrib_info(attr_bytes: bytes) -> List[Dict]:
         # 2bytes()
         if offset + 2 <= len(attr_bytes):
             length, attr_id = struct.unpack_from("<BB", attr_bytes, offset)
-            attr_data.append({
-                "length": length,
-                "attribute_id": attr_id,
-            })
+            attr_data.append(
+                {
+                    "length": length,
+                    "attribute_id": attr_id,
+                }
+            )
             offset += 2
         else:
             break

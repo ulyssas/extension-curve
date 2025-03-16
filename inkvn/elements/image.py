@@ -20,6 +20,7 @@ class VNImageElement(VNBaseElement):
 
     transform contains matrix (old format).
     """
+
     imageData: str
     transform: Optional[List[float]]
     cropRect: Optional[Tuple[Tuple[float, float], Tuple[float, float]]]

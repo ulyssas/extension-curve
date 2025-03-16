@@ -8,7 +8,6 @@ import logging
 import zipfile
 from typing import List
 
-import inkex
 from packaging import version
 
 import inkvn.reader.decode as d
@@ -25,8 +24,8 @@ class CurveReader:
     """
 
     def __init__(self, stream):
-        self.archive = zipfile.ZipFile(stream, 'r')
-        self.file_version: int = 44 # main support
+        self.archive = zipfile.ZipFile(stream, "r")
+        self.file_version: int = 44  # main support
         self.app_version: str
         self.artboards: List[VNArtboard] = []
 

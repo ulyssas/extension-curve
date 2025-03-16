@@ -4,8 +4,7 @@ VI text tools
 Decodes Linearity Curve styledTexts and turn them into simpler format.
 """
 
-
-from typing import Any, Dict, List
+from typing import Dict, List
 
 from inkex.utils import debug
 
@@ -16,8 +15,11 @@ def decode_new_text(styled_text: Dict) -> List[Dict]:
     upper_bounds: List[int] = []
     for key in styled_text.keys():
         # TODO skipped strokeStyle
-        #debug(f"KeyName:{key}")
-        if isinstance(styled_text[key], dict) and styled_text[key].get("values") is not None:
+        # debug(f"KeyName:{key}")
+        if (
+            isinstance(styled_text[key], dict)
+            and styled_text[key].get("values") is not None
+        ):
             values = styled_text[key]["values"]
             for child_value in values:
                 upper_bound = child_value["upperBound"]
@@ -28,7 +30,10 @@ def decode_new_text(styled_text: Dict) -> List[Dict]:
     # unifying each styles in styledText
     styles: List[Dict] = [{} for _ in range(len(upper_bounds))]
     for key in styled_text.keys():
-        if isinstance(styled_text[key], dict) and styled_text[key].get("values") is not None:
+        if (
+            isinstance(styled_text[key], dict)
+            and styled_text[key].get("values") is not None
+        ):
             values = styled_text[key]["values"]
             for child_value in values:
                 upper_bound = child_value["upperBound"]
@@ -54,7 +59,7 @@ def decode_new_text(styled_text: Dict) -> List[Dict]:
 def decode_old_text(unserialized: Dict) -> List[Dict]:
     """Decodes legacy text unpacked by NSKeyUnarchiver."""
     # string has already been processed
-    #debug(f"here:{unserialized}")
+    # debug(f"here:{unserialized}")
     string = unserialized["NSString"]
     lengths = unserialized.get("NSAttributeInfo")
     styles = unserialized["NSAttributes"]
@@ -63,10 +68,7 @@ def decode_old_text(unserialized: Dict) -> List[Dict]:
 
     # if text only contains one style
     if isinstance(styles, dict):
-        lengths = [{
-            "length": len(string),
-            "attribute_id": 0
-        }]
+        lengths = [{"length": len(string), "attribute_id": 0}]
         styles = [styles]
 
     for length_info in lengths:
@@ -75,7 +77,9 @@ def decode_old_text(unserialized: Dict) -> List[Dict]:
 
         # checking if NSAttributeInfo has successfully parsed
         if not styles or attribute_id < 0 or attribute_id >= len(styles):
-            debug(f"Error: attribute_id {attribute_id} is out of range. styles length: {len(styles)}")
+            debug(
+                f"Error: attribute_id {attribute_id} is out of range. styles length: {len(styles)}"
+            )
 
         attribute = styles[attribute_id]
 
@@ -89,7 +93,7 @@ def decode_old_text(unserialized: Dict) -> List[Dict]:
                     "red": ns_color.get("UIRed", 0),
                     "green": ns_color.get("UIGreen", 0),
                     "blue": ns_color.get("UIBlue", 0),
-                    "alpha": ns_color.get("UIAlpha", 1)
+                    "alpha": ns_color.get("UIAlpha", 1),
                 }
             }
 
@@ -100,17 +104,19 @@ def decode_old_text(unserialized: Dict) -> List[Dict]:
         ns_font = attribute.get("NSFont")
 
         # TODO Include strokeStyle, lineHeight
-        formatted_data.append({
-            # alignment might be wrong
-            "alignment": paragraph_style.get("NSAlignment", 1)+1,
-            "length": length,
-            "fillColor": color_data,
-            "fontName": ns_font["NSName"],
-            "fontSize": ns_font["NSSize"],
-            "kerning": 0,
-            "lineHeight": None,
-            "strikethrough": False,
-            "underline": False
-        })
+        formatted_data.append(
+            {
+                # alignment might be wrong
+                "alignment": paragraph_style.get("NSAlignment", 1) + 1,
+                "length": length,
+                "fillColor": color_data,
+                "fontName": ns_font["NSName"],
+                "fontSize": ns_font["NSSize"],
+                "kerning": 0,
+                "lineHeight": None,
+                "strikethrough": False,
+                "underline": False,
+            }
+        )
 
     return formatted_data

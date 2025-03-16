@@ -14,6 +14,7 @@ import inkex
 @dataclass
 class VNBaseElement:
     """Common Element properties."""
+
     name: str
     blur: float
     opacity: float
@@ -54,12 +55,15 @@ class VNBaseElement:
 @dataclass
 class VNTransform:
     """Linearity Curve transform."""
+
     rotation: float = 0.0
     scale: List[float] = field(default_factory=lambda: [1.0, 1.0])
     shear: float = 0.0
     translation: List[float] = field(default_factory=lambda: [0.0, 0.0])
 
-    def convert_transform(self, keep_proportion=False, with_scale=True) -> inkex.transforms.Transform:
+    def convert_transform(
+        self, keep_proportion=False, with_scale=True
+    ) -> inkex.transforms.Transform:
         """
         Creates a transform string for the `g` element in inkex.transforms.Transform.
 

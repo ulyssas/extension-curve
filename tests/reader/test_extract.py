@@ -20,6 +20,7 @@ def simple_zip_with_json():
     zip_buffer.seek(0)
     return zip_buffer
 
+
 @pytest.fixture
 def nested_zip_with_json():
     """zip file with another zip file containing dummy JSON data."""
@@ -38,12 +39,14 @@ def nested_zip_with_json():
     zip_buffer.seek(0)
     return zip_buffer
 
+
 def test_read_json_from_simple_zip(simple_zip_with_json):
     """Test reading JSON from a simple zip file."""
     with zipfile.ZipFile(simple_zip_with_json, "r") as archive:
         data = read_json_from_zip(archive, "test.json")
 
     assert data == {"key": "value"}
+
 
 def test_read_json_from_nested_zip(nested_zip_with_json):
     """Test reading JSON from a nested zip file."""

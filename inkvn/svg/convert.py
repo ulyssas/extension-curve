@@ -23,12 +23,13 @@ from ..elements.text import VNTextElement, singleStyledText
 from ..elements.styles import VNColor, VNGradient, pathStrokeStyle
 
 
-class CurveConverter():
+class CurveConverter:
     """
     inkvn CurveConverter
 
     Convert the intermediate data to Inkscape.
     """
+
     def __init__(self) -> None:
         self.reader: CurveReader
         self.target_version: int
@@ -38,7 +39,7 @@ class CurveConverter():
         self.offset_x: float
         self.offset_y: float
 
-    def convert(self, reader: CurveReader, clip_page: bool=False) -> None:
+    def convert(self, reader: CurveReader, clip_page: bool = False) -> None:
         self.reader = reader
 
         """
@@ -78,26 +79,27 @@ class CurveConverter():
             page.set("inkscape:label", target_artboard.title)
 
             self.load_page(
-                self.document.add(inkex.Layer.new(label=target_artboard.title)), target_artboard, clip_page
+                self.document.add(inkex.Layer.new(label=target_artboard.title)),
+                target_artboard,
+                clip_page,
             )
             self.doc.getroot()
 
-    def load_page(self, root_layer: inkex.Layer, artboard: VNArtboard, clip_page: bool=False) -> None:
+    def load_page(
+        self, root_layer: inkex.Layer, artboard: VNArtboard, clip_page: bool = False
+    ) -> None:
         """Convert  VNArtboard to inkex page."""
 
         # artboards have translations
         tr = inkex.transforms.Transform()
         tr_vector = inkex.Vector2d(
-            artboard.frame.x - self.offset_x,
-            artboard.frame.y - self.offset_y
+            artboard.frame.x - self.offset_x, artboard.frame.y - self.offset_y
         )
         tr.add_translate(tr_vector)
         root_layer.transform = tr
 
         # Artboard color/gradient
-        rect = inkex.Rectangle.new(
-            0, 0, artboard.frame.width, artboard.frame.height
-        )
+        rect = inkex.Rectangle.new(0, 0, artboard.frame.width, artboard.frame.height)
         rect.label = "background"
 
         # Fill Style
@@ -106,7 +108,9 @@ class CurveConverter():
             root_layer.add(rect)
         elif artboard.fillGradient is not None:
             if artboard.fillGradient.transform is not None:
-                artboard.fillGradient.gradient.set("gradientTransform", artboard.fillGradient.transform)
+                artboard.fillGradient.gradient.set(
+                    "gradientTransform", artboard.fillGradient.transform
+                )
             self.set_fill_grad_styles(rect, artboard.fillGradient)
             root_layer.add(rect)
         # if fill is none, rect will be dismissed
@@ -129,9 +133,7 @@ class CurveConverter():
         for layer in artboard.layers:
             parent = root_layer.add(inkex.Layer.new(layer.name))
             parent.set("opacity", layer.opacity)
-            parent.style["display"] = (
-                "inline" if layer.isVisible else "none"
-            )
+            parent.style["display"] = "inline" if layer.isVisible else "none"
             if layer.isLocked:
                 parent.set("sodipodi:insensitive", "true")
             # ? isExpanded
@@ -196,7 +198,7 @@ class CurveConverter():
         clip = None
         for child in group_element.groupElements:
             # find the clipping mask
-            if (isinstance(child, VNPathElement) and child.mask == 1):
+            if isinstance(child, VNPathElement) and child.mask == 1:
                 clip_path_child = child
                 break
 
@@ -230,7 +232,9 @@ class CurveConverter():
             image.set("sodipodi:insensitive", "true")
         if image_element.transform is not None:
             image.transform = image_element.transform
-        elif not self.has_transform_applied and image_element.localTransform is not None:
+        elif (
+            not self.has_transform_applied and image_element.localTransform is not None
+        ):
             image.transform = image_element.localTransform.convert_transform()
 
         # blur
@@ -276,7 +280,10 @@ class CurveConverter():
             path = inkex.PathElement.new(path.get_path().transform(path.transform))
 
         # PathEffect(corner), does not work for other paths in compoundPath
-        if not self.has_transform_applied and path_element.pathGeometries[0].corner_radius is not None:
+        if (
+            not self.has_transform_applied
+            and path_element.pathGeometries[0].corner_radius is not None
+        ):
             corner_radius = path_element.pathGeometries[0].corner_radius
             if any(corner_radius):  # only if there are values other than 0
                 self.set_corner(path, corner_radius)
@@ -307,11 +314,18 @@ class CurveConverter():
             # matrix transform is based on Vectornator 4.13.2, format 13
             # and Linearity Curve 5.1.1, format 21
             if path_element.fillGradient.transform is not None:
-                path_element.fillGradient.gradient.set("gradientTransform", path_element.fillGradient.transform)
+                path_element.fillGradient.gradient.set(
+                    "gradientTransform", path_element.fillGradient.transform
+                )
 
-            elif not self.has_transform_applied and path_element.localTransform is not None:
+            elif (
+                not self.has_transform_applied
+                and path_element.localTransform is not None
+            ):
                 gradient_transform = path_element.localTransform.convert_transform()
-                path_element.fillGradient.gradient.set("gradientTransform", gradient_transform)
+                path_element.fillGradient.gradient.set(
+                    "gradientTransform", gradient_transform
+                )
 
             self.set_fill_grad_styles(path, path_element.fillGradient)
         else:
@@ -328,7 +342,9 @@ class CurveConverter():
             text.transform = text_element.transform
         elif not self.has_transform_applied and text_element.localTransform is not None:
             # remove scale to prevent over-compressed look
-            text.transform = text_element.localTransform.convert_transform(with_scale=False)
+            text.transform = text_element.localTransform.convert_transform(
+                with_scale=False
+            )
 
         # BaseElement
         text.label = text_element.name
@@ -343,7 +359,7 @@ class CurveConverter():
             self.set_blur(text, text_element.convert_blur())
 
         if text_element.string and text_element.styledText:
-            offset = 0 # global offset(letter count)
+            offset = 0  # global offset(letter count)
             y_offset = 0
             line_height = 1.0  # default paragraph margin
 
@@ -362,7 +378,7 @@ class CurveConverter():
                 # inkex.utils.debug(f"this para: {repr(para)}")
 
                 para_offset = 0  # offset in para
-                while para_offset < len(para)+1:
+                while para_offset < len(para) + 1:
                     # break the loop if there's no remaining styledText
                     if styled_index >= len(text_element.styledText):
                         break
@@ -372,8 +388,10 @@ class CurveConverter():
                     # skip styledText which contains only "\n"
                     # ignore this check when offset == 0(start)
                     if offset != 0:
-                        while (styled.length == 1
-                            and text_element.string[offset-1] == "\n"):
+                        while (
+                            styled.length == 1
+                            and text_element.string[offset - 1] == "\n"
+                        ):
                             offset += 1
                             para_offset += 1
                             styled_index += 1
@@ -388,8 +406,8 @@ class CurveConverter():
                         remaining_length = styled.length
 
                     # apply style "until" there's no more text in para
-                    apply_length = min(len(para)+1 - para_offset, remaining_length)
-                    substring = para[para_offset:para_offset + apply_length]
+                    apply_length = min(len(para) + 1 - para_offset, remaining_length)
+                    substring = para[para_offset : para_offset + apply_length]
 
                     tspan = inkex.Tspan()
                     tspan.text = substring
@@ -406,14 +424,18 @@ class CurveConverter():
                         styled_index += 1
 
                 text.append(line_tspan)
-                y_offset += styled.fontSize * line_height  # last font decides line height
-                offset += len(para)+1
+                y_offset += (
+                    styled.fontSize * line_height
+                )  # last font decides line height
+                offset += len(para) + 1
 
         return text
 
     def convert_base(self, base_element: VNBaseElement) -> inkex.PathElement:
         """Converts a VNBaseElement to an empty SVG path (inkex.PathElement)."""
-        inkex.utils.debug(f'{base_element.name}: This element will be imported as empty path.')
+        inkex.utils.debug(
+            f"{base_element.name}: This element will be imported as empty path."
+        )
 
         path = inkex.PathElement()
 
@@ -431,7 +453,9 @@ class CurveConverter():
 
         return path
 
-    def set_stroke_styles(self, elem: inkex.BaseElement, stroke: pathStrokeStyle) -> None:
+    def set_stroke_styles(
+        self, elem: inkex.BaseElement, stroke: pathStrokeStyle
+    ) -> None:
         """Apply pathStrokeStyle to inkex.BaseElement."""
         elem.style["stroke"] = stroke.color.hex
         elem.style["stroke-opacity"] = stroke.color.alpha
@@ -452,7 +476,9 @@ class CurveConverter():
         elem.style["fill"] = f"url(#{fill.gradient.get_id()})"
         elem.style["fill-rule"] = "nonzero"
 
-    def set_blur(self, elem: inkex.BaseElement, blur: inkex.Filter.GaussianBlur) -> None:
+    def set_blur(
+        self, elem: inkex.BaseElement, blur: inkex.Filter.GaussianBlur
+    ) -> None:
         """Apply blur to inkex.BaseElement."""
         filt: inkex.Filter = inkex.Filter()
         filt.set("color-interpolation-filters", "sRGB")
@@ -464,10 +490,7 @@ class CurveConverter():
 
     def set_corner(self, elem: inkex.PathElement, corner_radius: List[float]) -> None:
         """Apply rounded corner to inkex.PathElement."""
-        params = " @ ".join(
-            f"F,0,0,1,0,{r},0,1"
-            for r in corner_radius
-        )
+        params = " @ ".join(f"F,0,0,1,0,{r},0,1" for r in corner_radius)
 
         # FIXME more cornerRadius work
         #  flexible="false" is how Linearity Curve behaved,
@@ -484,9 +507,7 @@ class CurveConverter():
 
         self.document.defs.add(path_effect)
         elem.set("inkscape:original-d", str(elem.path))
-        elem.set(
-            "inkscape:path-effect", f"{path_effect.get_id(1)}"
-        )
+        elem.set("inkscape:path-effect", f"{path_effect.get_id(1)}")
         elem.attrib.pop("d", None)  # delete "d", Inkscape auto-generates LPE path
 
     def set_tspan_style(self, elem: inkex.Tspan, styled: singleStyledText) -> None:
@@ -533,19 +554,19 @@ class CurveConverter():
         # fill
         if styled.fillColor:
             self.set_fill_color_styles(elem, styled.fillColor)
-        #elif styled.fillGradient:
+        # elif styled.fillGradient:
         #    self.set_fill_grad_styles(tspan, styled.fillGradient)
         else:
             elem.style["fill"] = "none"
 
         ## stroke
-        #if styled.strokeStyle:
+        # if styled.strokeStyle:
         #    self.set_stroke_styles(tspan, styled.strokeStyle)
 
         ## decorations
-        #if styled.underline:
+        # if styled.underline:
         #    tspan.style["text-decoration"] = "underline"
-        #if styled.strikethrough:
+        # if styled.strikethrough:
         #    tspan.style["text-decoration"] = "line-through"
 
     def add_guide(self, guide_element: VNBaseElement, offset: inkex.Vector2d) -> None:
@@ -574,7 +595,9 @@ class CurveConverter():
             elif x0 == x1:  # vertical
                 return x0, False
             else:
-                raise ValueError("Invalid guide path: Not perfectly horizontal or vertical.")
+                raise ValueError(
+                    "Invalid guide path: Not perfectly horizontal or vertical."
+                )
 
         orientation = False
         guide_offset = 0

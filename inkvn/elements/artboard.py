@@ -15,6 +15,7 @@ from .styles import VNColor, VNGradient
 @dataclass
 class VNArtboard:
     """Represents Linearity Curve Artboard."""
+
     title: str
     frame: Frame
     layers: List[VNLayer]
@@ -26,6 +27,7 @@ class VNArtboard:
 @dataclass
 class Frame:
     """Artboard frame."""
+
     width: float
     height: float
     x: float
@@ -35,6 +37,7 @@ class Frame:
 @dataclass
 class VNLayer:
     """Represents Linearity Curve Layer."""
+
     name: str
     opacity: float
     isVisible: bool

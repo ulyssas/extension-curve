@@ -54,7 +54,9 @@ class VNColor:
         hex_color = self._rgba_to_hex((r, g, b, a))
         return hex_color, a
 
-    def _legacy_hsba_to_rgba_tuple(self, hsba: Dict) -> Tuple[float, float, float, float]:
+    def _legacy_hsba_to_rgba_tuple(
+        self, hsba: Dict
+    ) -> Tuple[float, float, float, float]:
         """Converts an HSBA color to RGBA format."""
         hue = hsba.get("h", 0)
         saturation = hsba.get("s", 0)
@@ -97,17 +99,19 @@ class VNGradient:
     """
     Represents a gradient with gradient and optional transform.
     """
+
     def __init__(
-        self, fill_transform: Dict[str, Any], transform_matrix: Optional[List[float]],
-        stops: List[Dict], typeRawValue: int
+        self,
+        fill_transform: Dict[str, Any],
+        transform_matrix: Optional[List[float]],
+        stops: List[Dict],
+        typeRawValue: int,
     ):
         """
         Initializes the Gradient object from a Linearity Curve data.
         """
         self.gradient: inkex.Gradient = self._convert_gradient(
-            tr=fill_transform,
-            stops=stops,
-            type_value=typeRawValue
+            tr=fill_transform, stops=stops, type_value=typeRawValue
         )
         self.transform: Optional[inkex.transforms.Transform] = None
         tr = inkex.transforms.Transform()
@@ -121,17 +125,17 @@ class VNGradient:
     ) -> inkex.Gradient:
         if type_value == 0:  # Linear Gradient
             gradient = inkex.LinearGradient()
-            gradient.set("x1", tr['start'][0])
-            gradient.set("y1", tr['start'][1])
-            gradient.set("x2", tr['end'][0])
-            gradient.set("y2", tr['end'][1])
+            gradient.set("x1", tr["start"][0])
+            gradient.set("y1", tr["start"][1])
+            gradient.set("x2", tr["end"][0])
+            gradient.set("y2", tr["end"][1])
 
         elif type_value == 1:  # Radial Gradient
-            cx, cy = tr['start']
-            fx, fy = tr['end']
+            cx, cy = tr["start"]
+            fx, fy = tr["end"]
 
             # Calculate radius (r) from start and end points. ??
-            r = ((fx - cx)**2 + (fy - cy)**2)**0.5
+            r = ((fx - cx) ** 2 + (fy - cy) ** 2) ** 0.5
 
             gradient = inkex.RadialGradient()
             gradient.set("cx", cx)
@@ -163,6 +167,7 @@ class pathStrokeStyle:
     """
     Linearity Curve stroke format for path and text.
     """
+
     basicStrokeStyle: Optional[basicStrokeStyle]
     color: VNColor
     width: float
@@ -170,7 +175,10 @@ class pathStrokeStyle:
 
 class basicStrokeStyle:
     """cap, dash, join, position"""
-    def __init__(self, cap: int, dashPattern: Optional[List[float]], join: int, position: int):
+
+    def __init__(
+        self, cap: int, dashPattern: Optional[List[float]], join: int, position: int
+    ):
         self.cap: str = self._cap_to_svg(cap)
         self.dashPattern: List[float] = self._process_dash_pattern(dashPattern)
         self.join: str = self._join_to_svg(join)
@@ -190,11 +198,7 @@ class basicStrokeStyle:
     @staticmethod
     def _cap_to_svg(cap):
         """Returns value for stroke-linecap attribute."""
-        cap_map = {
-            0: "butt",
-            1: "round",
-            2: "square"
-        }
+        cap_map = {0: "butt", 1: "round", 2: "square"}
         return cap_map.get(cap, "butt")
 
     @staticmethod
@@ -214,6 +218,7 @@ class styledElementData:
     Stores style attributes for text for passing to
     read_vn_abst_path / read_vn_abst_text.
     """
+
     styled_data: Dict
     mask: int
     stroke: pathStrokeStyle
