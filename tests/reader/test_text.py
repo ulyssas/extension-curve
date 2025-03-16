@@ -131,7 +131,7 @@ ENCODED_OLD_TEXT = {
     ]
 }
 
-DECODED_TEXT = [
+DECODED_NEW_TEXT = [
     {
         "fillColor": {"hsba": {"alpha": 1, "brightness": 0.5725490196078431, "hue": 0.5266203703703703, "saturation": 0.9863013698630138}},
         "length": 7,
@@ -189,16 +189,74 @@ DECODED_TEXT = [
     }
 ]
 
+DECODED_OLD_TEXT = [
+    {
+        "alignment": 2,
+        "length": 7,
+        "fillColor": {"rgba": {"red": 0.007843137718737125, "green": 0.48235294222831726, "blue": 0.572549045085907, "alpha": 1.0}},
+        "fontName": "Helvetica-BoldOblique",
+        "fontSize": 106.29886627197266,
+        "kerning": 0,
+        "lineHeight": None,
+        "strikethrough": False,
+        "underline": False
+    },
+    {
+        "alignment": 2,
+        "length": 1,
+        "fillColor": {"rgba": {"red": 0.0117647061124444, "green": 0.43529412150382996, "blue": 0.3607843220233917, "alpha": 1.0}},
+        "fontName": "Helvetica-BoldOblique",
+        "fontSize": 106.29886627197266,
+        "kerning": 0,
+        "lineHeight": None,
+        "strikethrough": False,
+        "underline": False
+    },
+    {
+        "alignment": 2,
+        "length": 15,
+        "fillColor": {"rgba": {"red": 1.0, "green": 1.0, "blue": 1.0, "alpha": 1.0}},
+        "fontName": "Helvetica-BoldOblique",
+        "fontSize": 106.29886627197266,
+        "kerning": 0,
+        "lineHeight": None,
+        "strikethrough": False,
+        "underline": False
+    },
+    {
+        "alignment": 2,
+        "length": 1,
+        "fillColor": {"rgba": {"red": 0.0117647061124444, "green": 0.43529412150382996, "blue": 0.3607843220233917, "alpha": 1.0}},
+        "fontName": "Helvetica-BoldOblique",
+        "fontSize": 106.29886627197266,
+        "kerning": 0,
+        "lineHeight": None,
+        "strikethrough": False,
+        "underline": False
+    },
+    {
+        "alignment": 2,
+        "length": 4,
+        "fillColor": {"rgba": {"red": 0.007843137718737125, "green": 0.48235294222831726, "blue": 0.572549045085907, "alpha": 1.0}},
+        "fontName": "Helvetica-BoldOblique",
+        "fontSize": 106.29886627197266,
+        "kerning": 0,
+        "lineHeight": None,
+        "strikethrough": False,
+        "underline": False
+    }
+]
+
 
 def test_decode_new_text():
     """Test new text format."""
     data = decode_new_text(ENCODED_NEW_TEXT)
 
-    assert data == DECODED_TEXT
+    assert data == DECODED_NEW_TEXT
 
 
 def test_decode_old_text():
     """Test legacy text format."""
     data = decode_old_text(ENCODED_OLD_TEXT)
 
-    assert data == DECODED_TEXT
+    assert data == DECODED_OLD_TEXT
