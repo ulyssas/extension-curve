@@ -16,17 +16,26 @@ class TestCurveConverter(ComparisonMixin, TestCase):
         "./blur.curve",
         "./gradient.curve",
         "./image.curve",
-        "./text.curve",
         "./variousshapes.curve",
         "./artboards_and_guides.vectornator",
         "./blend_modes.vectornator",
         "./blur.vectornator",
         "./gradient.vectornator",
         "./image.vectornator",
-        "./text.vectornator",
-        "./variousshapes.vectornator"
+        "./variousshapes.vectornator",
     ]
 
     comparisons = [tuple()]
     compare_filters = [CompareOrderIndependentStyle()]
 
+
+class TestCurveConverterWithErrorMessages(ComparisonMixin, TestCase):
+    effect_class = CurveInput
+    compare_file = [
+        "./text.curve",
+        "./text.vectornator",
+    ]
+
+    comparisons = [tuple()]
+    compare_filters = [CompareOrderIndependentStyle()]
+    stderr_protect = False

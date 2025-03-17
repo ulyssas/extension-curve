@@ -14,15 +14,16 @@ from .styles import VNColor, VNGradient, pathStrokeStyle
 @dataclass
 class VNTextElement(VNBaseElement):
     """rich text data."""
+
     string: str
-    transform: Optional[List[float]] # matrix(legacy)
+    transform: Optional[List[float]]  # matrix(legacy)
     styledText: Optional[List[singleStyledText]]
     textProperty: Optional[textProperty]
 
 
 @dataclass
 class singleStyledText:
-    length: int # effectiveRange
+    length: int  # effectiveRange
     fontName: str
     fontSize: float
     alignment: int
@@ -43,11 +44,7 @@ class singleStyledText:
         2: Right
         3: Justify <- how do i do this?
         """
-        return {
-            0: "start",
-            1: "middle",
-            2: "end"
-        }.get(self.alignment, "start")
+        return {0: "start", 1: "middle", 2: "end"}.get(self.alignment, "start")
 
 
 @dataclass

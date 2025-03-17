@@ -16,7 +16,8 @@ from .styles import VNColor, VNGradient, pathStrokeStyle
 @dataclass
 class VNPathElement(VNBaseElement):
     """Path Element properties."""
-    mask: int # 0 or 1
+
+    mask: int  # 0 or 1
     fillColor: Optional[VNColor]
     fillGradient: Optional[VNGradient]
     strokeStyle: Optional[pathStrokeStyle]
@@ -26,6 +27,7 @@ class VNPathElement(VNBaseElement):
 
 class pathGeometry:
     """path format in Linearity Curve(nodes)."""
+
     def __init__(self, closed: bool, nodes: List[Dict]):
         self.corner_radius: List[float] = []
         self.path = self.parse_nodes(closed, nodes)

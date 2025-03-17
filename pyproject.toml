@@ -1,0 +1,30 @@
+[tool.poetry]
+name = "inkvn"
+version = "0.1.0"
+description = "Inkscape extension to import Linearity Curve (formerly Vectornator) files"
+authors = ["Inkscape Authors <inkscape-devel@lists.inkscape.org>"]
+license = "GPL-3.0-or-later"
+readme = "README.md"
+repository = "https://gitlab.com/inkscape/extras/extension-curve"
+keywords = ["extensions", "graphics", "inkscape", "svg", "vector"]
+
+[tool.poetry.dependencies]
+python = ">=3.9,<3.14"
+inkex = {git = "https://gitlab.com/inkscape/extensions", rev = "1.4.x"}
+pygobject = "3.50.0" # workaround for https://github.com/beeware/toga/issues/3143, remove when inkex removes the gui deps
+
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.2.1"
+mypy = "^1.15.0"
+pre-commit = "^4.1.0"
+pytest-cov = "^4.0.0"
+coverage = "^6.2"
+
+
+[build-system]
+requires = ["poetry-core>=2.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry.requires-plugins]
+poetry-plugin-export = ">=1.9.0"

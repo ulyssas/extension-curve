@@ -9,7 +9,7 @@ Needs more Vectornator files for reference
 
 import base64
 import logging
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Union
 
 import inkex
 
@@ -23,8 +23,14 @@ from ..elements.guide import VNGuideElement
 from ..elements.group import VNGroupElement
 from ..elements.image import VNImageElement
 from ..elements.path import VNPathElement, pathGeometry
-from ..elements.text import VNTextElement, singleStyledText, textProperty
-from ..elements.styles import VNColor, VNGradient, pathStrokeStyle, basicStrokeStyle, styledElementData
+from ..elements.text import VNTextElement, singleStyledText
+from ..elements.styles import (
+    VNColor,
+    VNGradient,
+    pathStrokeStyle,
+    basicStrokeStyle,
+    styledElementData,
+)
 
 
 def read_vn_artboard(archive: Any, gid_json: Dict) -> VNArtboard:
@@ -62,7 +68,7 @@ def read_vn_artboard(archive: Any, gid_json: Dict) -> VNArtboard:
         layers=layer_list,
         guides=guide_list,
         fillColor=fill_color,
-        fillGradient=fill_gradient
+        fillGradient=fill_gradient,
     )
 
 
@@ -91,7 +97,7 @@ def read_vn_layer(archive: Any, layer: Dict) -> VNLayer:
         isVisible=properties.get("isVisible", True),
         isLocked=properties.get("isLocked", False),
         isExpanded=properties.get("isExpanded", False),
-        elements=element_list
+        elements=element_list,
     )
 
 
@@ -104,16 +110,14 @@ def read_vn_element(archive: Any, element: Dict) -> VNBaseElement:
         "blendMode": element.get("blendMode", 0),
         "isHidden": element.get("isHidden", False),
         "isLocked": element.get("isLocked", False),
-        "localTransform": None
+        "localTransform": None,
     }
 
     try:
         # localTransform (BaseElement)
         local_transform = element.get("localTransform")
         if local_transform is not None:
-            base_element_data["localTransform"] = VNTransform(
-                **local_transform
-            )
+            base_element_data["localTransform"] = VNTransform(**local_transform)
 
         # Guide (GuideElement)
         guide = element.get("subElement", {}).get("guideLine", {}).get("_0")
@@ -150,7 +154,9 @@ def read_vn_element(archive: Any, element: Dict) -> VNBaseElement:
 
             # singleStyles (Vectornator 4.13.6, format 19)
             abstract_path = None
-            single_style = stylable.get("subElement", {}).get("singleStyle", {}).get("_0")
+            single_style = (
+                stylable.get("subElement", {}).get("singleStyle", {}).get("_0")
+            )
             if single_style is not None:
                 fill_result = read_vn_fill(stylable, single_style)
                 if isinstance(fill_result, VNGradient):
@@ -171,7 +177,7 @@ def read_vn_element(archive: Any, element: Dict) -> VNBaseElement:
                     mask=mask,
                     stroke=stroke_style,
                     color=fill_color,
-                    grad=fill_gradient
+                    grad=fill_gradient,
                 )
                 return read_vn_abst_path(path_element_data, base_element_data)
 
@@ -183,12 +189,14 @@ def read_vn_element(archive: Any, element: Dict) -> VNBaseElement:
                     mask=mask,
                     stroke=stroke_style,
                     color=fill_color,
-                    grad=fill_gradient
+                    grad=fill_gradient,
                 )
                 return read_vn_abst_text(text_element_data, base_element_data)
 
         # if the element is unknown type:
-        raise NotImplementedError(f'{base_element_data["name"]}: This element has unknown type.')
+        raise NotImplementedError(
+            f"{base_element_data['name']}: This element has unknown type."
+        )
 
     except Exception as e:
         # if the element is unknown type or an error occurred:
@@ -205,8 +213,7 @@ def read_vn_group(archive: Any, group: Dict, base_element: Dict) -> VNGroupEleme
     for group_element in group_elements:
         if group_element is not None:
             # get group elements recursively
-            group_element_list.append(
-                read_vn_element(archive, group_element))
+            group_element_list.append(read_vn_element(archive, group_element))
 
     return VNGroupElement(groupElements=group_element_list, **base_element)
 
@@ -222,10 +229,14 @@ def read_vn_image(archive: Any, image: Dict, base_element: Dict) -> VNImageEleme
     crop_rect = None
     if image.get("cropRect") is not None:
         crop_rect = tuple(map(tuple, image.get("cropRect")))
-    return VNImageElement(imageData=image_data, transform=transform, cropRect=crop_rect, **base_element)
+    return VNImageElement(
+        imageData=image_data, transform=transform, cropRect=crop_rect, **base_element
+    )
 
 
-def read_vn_abst_path(path_element: styledElementData, base_element: Dict) -> VNPathElement:
+def read_vn_abst_path(
+    path_element: styledElementData, base_element: Dict
+) -> VNPathElement:
     """Reads path element and returns VNPathElement."""
 
     def _add_path(path_data: Dict, path_geometry_list: List[pathGeometry]) -> None:
@@ -234,41 +245,45 @@ def read_vn_abst_path(path_element: styledElementData, base_element: Dict) -> VN
         # AbstractPath
         if path_data.get("nodes") is not None:
             path_geometry_list.append(
-                pathGeometry(
-                    closed=path_data["closed"],
-                    nodes=path_data["nodes"]
-                )
+                pathGeometry(closed=path_data["closed"], nodes=path_data["nodes"])
             )
         # SingleStyle
         elif geometry is not None:
             path_geometry_list.append(
-                pathGeometry(
-                    closed=geometry["closed"],
-                    nodes=geometry["nodes"]
-                )
+                pathGeometry(closed=geometry["closed"], nodes=geometry["nodes"])
             )
 
     # Path
-    path_data = path_element.styled_data.get("subElement", {}).get("pathData", {}).get("_0")
+    path_data = (
+        path_element.styled_data.get("subElement", {}).get("pathData", {}).get("_0")
+    )
     path_geometry_list: List[pathGeometry] = []
 
     if path_data is not None:
         text_path = path_data.get("subElement", {}).get("textPath", {}).get("_0")
         if text_path is not None:
-            inkex.utils.debug(f'{base_element["name"]}: textOnPath is not supported.')
+            inkex.utils.debug(f"{base_element['name']}: textOnPath is not supported.")
         _add_path(path_data, path_geometry_list)
 
     # compoundPath
-    compound_path_data = path_element.styled_data.get("subElement", {}).get("compoundPathData", {}).get("_0")
+    compound_path_data = (
+        path_element.styled_data.get("subElement", {})
+        .get("compoundPathData", {})
+        .get("_0")
+    )
     if compound_path_data is not None:
         # Path Geometries (subpath)
         subpaths = compound_path_data.get("subpaths")
         if subpaths is not None:
             for sub_element in subpaths:
-                sub_stylable = sub_element.get("subElement", {}).get("stylable", {}).get("_0")
+                sub_stylable = (
+                    sub_element.get("subElement", {}).get("stylable", {}).get("_0")
+                )
                 # Vectornator 4.13.5, format 16
                 if sub_stylable is not None:
-                    sub_path = sub_stylable["subElement"]["abstractPath"]["_0"]["subElement"]["pathData"]["_0"]
+                    sub_path = sub_stylable["subElement"]["abstractPath"]["_0"][
+                        "subElement"
+                    ]["pathData"]["_0"]
 
                 # else (Vectornator 4.13.6, format 19)
                 else:
@@ -282,11 +297,13 @@ def read_vn_abst_path(path_element: styledElementData, base_element: Dict) -> VN
         fillGradient=path_element.grad,
         strokeStyle=path_element.stroke,
         pathGeometries=path_geometry_list,
-        **base_element
+        **base_element,
     )
 
 
-def read_vn_abst_text(text_element: styledElementData, base_element: Dict) -> VNBaseElement:
+def read_vn_abst_text(
+    text_element: styledElementData, base_element: Dict
+) -> VNBaseElement:
     """
     Reads legacy text element and returns VNTextElement.
     """
@@ -297,13 +314,13 @@ def read_vn_abst_text(text_element: styledElementData, base_element: Dict) -> VN
     styled_text = None
 
     # I cannot replicate textProperty in legacy format
-    transform = text_data.get("transform") # matrix
-    resize_mode = text_data.get("resizeMode")
-    height = text_data.get("height")
-    width = text_data.get("width")
+    transform = text_data.get("transform")  # matrix
+    # resize_mode = text_data.get("resizeMode")
+    # height = text_data.get("height")
+    # width = text_data.get("width")
 
     # styledText
-    styled_text = NSKeyedUnarchiver(base64.b64decode(text_data['attributedText']))
+    styled_text = NSKeyedUnarchiver(base64.b64decode(text_data["attributedText"]))
     string = styled_text["NSString"]
     styles = t.decode_old_text(styled_text)
     styled_text_list = read_styled_text(styles, text_element)
@@ -312,14 +329,16 @@ def read_vn_abst_text(text_element: styledElementData, base_element: Dict) -> VN
         string=string,
         transform=transform,
         styledText=styled_text_list,
-        textProperty=text_property, # TODO Illegal format
-        **base_element
+        textProperty=text_property,  # TODO Illegal format
+        **base_element,
     )
 
 
-def read_styled_text(styles: List[Dict], global_style: styledElementData) -> List[singleStyledText]:
+def read_styled_text(
+    styles: List[Dict], global_style: styledElementData
+) -> List[singleStyledText]:
     styled_text_list: List[singleStyledText] = []
-    #inkex.utils.debug(styles)
+    # inkex.utils.debug(styles)
     for style in styles:
         color = None
         # color
@@ -330,7 +349,7 @@ def read_styled_text(styles: List[Dict], global_style: styledElementData) -> Lis
             color = global_style.color
 
         # stroke # TODO text strokestyle(fix reader/text.py)
-        #if style.get("strokeStyle") is not None:
+        # if style.get("strokeStyle") is not None:
         #    stroke = style["strokeStyle"]
         #    stroke = pathStrokeStyle(stroke_style, stroke)
 
@@ -342,10 +361,10 @@ def read_styled_text(styles: List[Dict], global_style: styledElementData) -> Lis
             kerning=style.get("kerning"),
             lineHeight=style.get("lineHeight"),
             fillColor=color,
-            fillGradient=None, # TODO gradient applies globally
+            fillGradient=None,  # TODO gradient applies globally
             strokeStyle=None,
             strikethrough=style.get("strikethrough"),
-            underline=style.get("underline")
+            underline=style.get("underline"),
         )
         styled_text_list.append(styled_text)
 
@@ -360,17 +379,18 @@ def read_vn_stroke(stylable: Dict) -> pathStrokeStyle:
             "cap": stroke_style["cap"],
             "dashPattern": stroke_style["dashPattern"],
             "join": stroke_style["join"],
-            "position": stroke_style["position"]
+            "position": stroke_style["position"],
         }
         return pathStrokeStyle(
-            basicStrokeStyle=basicStrokeStyle(
-                **stroke_style["basicStrokeStyle"]),
+            basicStrokeStyle=basicStrokeStyle(**stroke_style["basicStrokeStyle"]),
             color=VNColor(color_dict=stroke_style["color"]),
-            width=stroke_style["width"]
+            width=stroke_style["width"],
         )
 
 
-def read_vn_fill(stylable: Dict, single_style: Dict=None) -> VNGradient | VNColor | None:
+def read_vn_fill(
+    stylable: Dict, single_style: Dict = None
+) -> Union[VNGradient, VNColor, None]:
     """Reads fill data and returns as class."""
     # fill
     fill_data = stylable.get("fill")
@@ -386,7 +406,7 @@ def read_vn_fill(stylable: Dict, single_style: Dict=None) -> VNGradient | VNColo
                 fill_transform=stylable["fillTransform"],
                 transform_matrix=stylable["fillTransform"]["transform"],
                 stops=gradient["stops"],
-                typeRawValue=gradient["typeRawValue"]
+                typeRawValue=gradient["typeRawValue"],
             )
         elif color is not None:
             return VNColor(color_dict=color)
@@ -401,7 +421,7 @@ def read_vn_fill(stylable: Dict, single_style: Dict=None) -> VNGradient | VNColo
                 fill_transform=stylable["fillTransform"],
                 transform_matrix=stylable["fillTransform"]["transform"],
                 stops=gradient["stops"],
-                typeRawValue=gradient["typeRawValue"]
+                typeRawValue=gradient["typeRawValue"],
             )
         elif color is not None:
             return VNColor(color_dict=color)
@@ -413,7 +433,7 @@ def read_vn_fill(stylable: Dict, single_style: Dict=None) -> VNGradient | VNColo
                 fill_transform=stylable["fillTransform"],
                 transform_matrix=stylable["fillTransform"]["transform"],
                 stops=fill_gradient["stops"],
-                typeRawValue=fill_gradient["typeRawValue"]
+                typeRawValue=fill_gradient["typeRawValue"],
             )
         elif fill_color is not None:
             return VNColor(color_dict=fill_color)
