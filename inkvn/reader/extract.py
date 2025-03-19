@@ -7,9 +7,10 @@ reads Vectornator / Linearity Curve JSON data from .vectornator or .curve files.
 import base64
 import io
 import json
-import logging
 import zipfile
 from typing import Any, Dict
+
+import inkex
 
 
 def read_json_from_zip(
@@ -45,10 +46,10 @@ def read_json_from_zip(
         )
 
     except (json.JSONDecodeError, FileNotFoundError) as e:
-        logging.error(
+        inkex.errormsg(
             f"Archive name: {archive_name}, Failed to read or parse JSON file '{file_name}': {e}"
         )
-        raise  # Re-raise the exception after logging.
+        raise
 
 
 def read_dat_from_zip(
@@ -81,7 +82,7 @@ def read_dat_from_zip(
         )
 
     except Exception as e:
-        logging.error(
+        inkex.errormsg(
             f"Archive name: {archive_name}, Failed to read or encode bitmap file '{file_name}': {e}"
         )
         raise

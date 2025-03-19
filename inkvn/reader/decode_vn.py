@@ -8,7 +8,6 @@ Needs more Vectornator files for reference
 """
 
 import base64
-import logging
 from typing import Any, Dict, List, Union
 
 import inkex
@@ -200,7 +199,7 @@ def read_vn_element(archive: Any, element: Dict) -> VNBaseElement:
 
     except Exception as e:
         # if the element is unknown type or an error occurred:
-        logging.error(f"Error reading element: {e}", exc_info=True)
+        inkex.errormsg(f"Error reading element: {e}")
         return VNBaseElement(**base_element_data)
 
 

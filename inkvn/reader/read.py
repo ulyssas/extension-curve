@@ -4,10 +4,10 @@ inkvn Reader
 Reads Linearity Curve / Vectornator files and convert them into intermediate data.
 """
 
-import logging
 import zipfile
 from typing import List
 
+import inkex
 from packaging import version
 
 import inkvn.reader.decode as d
@@ -70,7 +70,7 @@ class CurveReader:
         try:
             current_version = version.parse(input_version)
         except version.InvalidVersion:
-            logging.warning(f"Invalid version string: {input_version}")
+            inkex.errormsg(f"Invalid version string: {input_version}")
             return False
 
         return current_version >= required_version

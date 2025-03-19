@@ -8,7 +8,6 @@ Needs files that are fileFormatVersion 30~39.
 """
 
 import base64
-import logging
 from typing import Any, Dict, List, Optional, Union
 
 import inkex
@@ -208,7 +207,7 @@ def read_element(archive: Any, gid_json: Dict, element: Dict) -> VNBaseElement:
         )
 
     except Exception as e:
-        logging.error(f"Error reading element: {e}", exc_info=True)
+        inkex.errormsg(f"Error reading element: {e}")
         return VNBaseElement(**base_element_data)
 
 

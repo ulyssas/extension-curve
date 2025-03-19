@@ -4,7 +4,6 @@ inkvn Converter
 Convert the intermediate data to Inkscape read by read.py
 """
 
-import logging
 from typing import List, Optional, Tuple, Union
 
 import inkex
@@ -162,14 +161,13 @@ class CurveConverter:
                 return self.convert_path(element)
 
             elif isinstance(element, VNTextElement):
-                # inkex.utils.debug(f'{element.name}: Text has been successfully parsed, but text import is not supported yet.')
                 return self.convert_text(element)
 
             elif isinstance(element, VNBaseElement):
                 return self.convert_base(element)  # will be empty path element
 
         except Exception as e:
-            logging.error(f"Error converting element: {e}", exc_info=True)
+            inkex.errormsg(f"Error converting element: {e}")
 
     def convert_group(self, group_element: VNGroupElement) -> inkex.Group:
         """
@@ -461,10 +459,11 @@ class CurveConverter:
         """Apply pathStrokeStyle to inkex.BaseElement."""
         elem.style["stroke"] = stroke.color.hex
         elem.style["stroke-opacity"] = stroke.color.alpha
-        elem.style["stroke-linecap"] = stroke.basicStrokeStyle.cap
-        elem.style["stroke-linejoin"] = stroke.basicStrokeStyle.join
-        elem.style["stroke-dasharray"] = stroke.basicStrokeStyle.dashPattern
         elem.style["stroke-width"] = stroke.width
+        if stroke.basicStrokeStyle is not None:
+            elem.style["stroke-linecap"] = stroke.basicStrokeStyle.cap
+            elem.style["stroke-linejoin"] = stroke.basicStrokeStyle.join
+            elem.style["stroke-dasharray"] = stroke.basicStrokeStyle.dashPattern
 
     def set_fill_color_styles(self, elem: inkex.BaseElement, fill: VNColor) -> None:
         """Apply fillColor to inkex.BaseElement."""
