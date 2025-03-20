@@ -82,7 +82,6 @@ class CurveConverter:
                 target_artboard,
                 clip_page,
             )
-            self.doc.getroot()
 
     def load_page(
         self, root_layer: inkex.Layer, artboard: VNArtboard, clip_page: bool = False
@@ -100,6 +99,7 @@ class CurveConverter:
         # Artboard color/gradient
         rect = inkex.Rectangle.new(0, 0, artboard.frame.width, artboard.frame.height)
         rect.label = "background"
+        rect.set("sodipodi:insensitive", "true")
 
         # Fill Style
         if artboard.fillColor is not None:
@@ -126,7 +126,7 @@ class CurveConverter:
             self.document.defs.add(clip)
 
             if clip is not None:
-                root_layer.style["clip-path"] = f"url(#{clip.get_id()})"
+                root_layer.style["clip-path"] = clip.get_id(2)
 
         # layers in the artboard
         for layer in artboard.layers:
@@ -177,19 +177,11 @@ class CurveConverter:
 
         group = inkex.Group()
 
-        # BaseElement
-        group.label = group_element.name
-        group.style["opacity"] = group_element.opacity
-        group.style["mix-blend-mode"] = group_element.convert_blend()
-        group.style["display"] = "none" if group_element.isHidden else "inline"
-        if group_element.isLocked:
-            group.set("sodipodi:insensitive", "true")
+        self.set_basic_attribs(group_element, group)
+
+        # transform
         if not self.has_transform_applied and group_element.localTransform is not None:
             group.transform = group_element.localTransform.convert_transform()
-
-        # blur
-        if group_element.blur > 0:
-            self.set_blur(group, group_element.convert_blur())
 
         # clipping mask
         clip_path_child = None
@@ -223,23 +215,15 @@ class CurveConverter:
         """Converts a VNImageElement to an SVG image (inkex.Image)."""
         image = inkex.Image()
 
-        # BaseElement
-        image.label = image_element.name
-        image.style["opacity"] = image_element.opacity
-        image.style["mix-blend-mode"] = image_element.convert_blend()
-        image.style["display"] = "none" if image_element.isHidden else "inline"
-        if image_element.isLocked:
-            image.set("sodipodi:insensitive", "true")
+        self.set_basic_attribs(image_element, image)
+
+        # transform
         if image_element.transform is not None:
             image.transform = image_element.transform
         elif (
             not self.has_transform_applied and image_element.localTransform is not None
         ):
             image.transform = image_element.localTransform.convert_transform()
-
-        # blur
-        if image_element.blur > 0:
-            self.set_blur(image, image_element.convert_blur())
 
         # Image
         img_format = image_element.image_format()
@@ -268,6 +252,8 @@ class CurveConverter:
         """Converts a VNPathElement to an SVG path (inkex.PathElement)."""
         path = inkex.PathElement()
 
+        self.set_basic_attribs(path_element, path)
+
         # pathGeometry
         if path_element.pathGeometries:
             for path_geometry in path_element.pathGeometries:
@@ -275,9 +261,7 @@ class CurveConverter:
 
         if not self.has_transform_applied and path_element.localTransform is not None:
             path.transform = path_element.localTransform.convert_transform()
-
-            # Apply Transform
-            path = inkex.PathElement.new(path.get_path().transform(path.transform))
+            path.apply_transform()
 
         # PathEffect(corner), does not work for other paths in compoundPath
         if (
@@ -287,18 +271,6 @@ class CurveConverter:
             corner_radius = path_element.pathGeometries[0].corner_radius
             if any(corner_radius):  # only if there are values other than 0
                 self.set_corner(path, corner_radius)
-
-        # BaseElement
-        path.label = path_element.name
-        path.style["opacity"] = path_element.opacity
-        path.style["mix-blend-mode"] = path_element.convert_blend()
-        path.style["display"] = "none" if path_element.isHidden else "inline"
-        if path_element.isLocked:
-            path.set("sodipodi:insensitive", "true")
-
-        # blur
-        if path_element.blur > 0:
-            self.set_blur(path, path_element.convert_blur())
 
         # Stroke Style
         if path_element.strokeStyle is not None:
@@ -337,6 +309,8 @@ class CurveConverter:
         """Converts a VNTextElement to an SVG Text (inkex.TextElement)."""
         text = inkex.TextElement()
 
+        self.set_basic_attribs(text_element, text)
+
         # transform
         if text_element.transform is not None:
             text.transform = text_element.transform
@@ -345,18 +319,6 @@ class CurveConverter:
             text.transform = text_element.localTransform.convert_transform(
                 with_scale=False
             )
-
-        # BaseElement
-        text.label = text_element.name
-        text.style["opacity"] = text_element.opacity
-        text.style["mix-blend-mode"] = text_element.convert_blend()
-        text.style["display"] = "none" if text_element.isHidden else "inline"
-        if text_element.isLocked:
-            text.set("sodipodi:insensitive", "true")
-
-        # blur
-        if text_element.blur > 0:
-            self.set_blur(text, text_element.convert_blur())
 
         if text_element.string and text_element.styledText:
             offset = 0  # global offset(letter count)
@@ -374,8 +336,6 @@ class CurveConverter:
                 line_tspan.set("sodipodi:role", "line")
                 line_tspan.set("x", "0")
                 line_tspan.set("y", f"{y_offset}px")
-
-                # inkex.utils.debug(f"this para: {repr(para)}")
 
                 para_offset = 0  # offset in para
                 while para_offset < len(para) + 1:
@@ -404,6 +364,10 @@ class CurveConverter:
                     # set remaining_length
                     if remaining_length <= 0:
                         remaining_length = styled.length
+
+                    # set alignment(not working)
+                    # text.style["text-align"] = styled.convert_text_anchor()
+                    # text.style["text-anchor"] = styled.convert_text_anchor()
 
                     # apply style "until" there's no more text in para
                     apply_length = min(len(para) + 1 - para_offset, remaining_length)
@@ -439,19 +403,26 @@ class CurveConverter:
 
         path = inkex.PathElement()
 
-        # BaseElement
-        path.label = base_element.name
-        path.style["opacity"] = base_element.opacity
-        path.style["mix-blend-mode"] = base_element.convert_blend()
-        path.style["display"] = "none" if base_element.isHidden else "inline"
-        if base_element.isLocked:
-            path.set("sodipodi:insensitive", "true")
+        self.set_basic_attribs(base_element, path)
 
         # Style
         path.style["stroke"] = "none"
         path.style["fill"] = "none"
 
         return path
+
+    def set_basic_attribs(
+        self, base_element: VNBaseElement, elem: inkex.BaseElement
+    ) -> None:
+        """Apply common element properties."""
+        elem.label = base_element.name
+        elem.style["opacity"] = base_element.opacity
+        elem.style["mix-blend-mode"] = base_element.convert_blend()
+        elem.style["display"] = "none" if base_element.isHidden else "inline"
+        if base_element.isLocked:
+            elem.set("sodipodi:insensitive", "true")
+        if base_element.blur > 0:
+            self.set_blur(elem, base_element.convert_blur())
 
     def set_stroke_styles(
         self, elem: inkex.BaseElement, stroke: pathStrokeStyle
@@ -487,7 +458,7 @@ class CurveConverter:
         self.document.defs.add(filt)
 
         # Only one filter will be there
-        elem.style["filter"] = f"url(#{filt.get_id()})"
+        elem.style["filter"] = filt
 
     def set_corner(self, elem: inkex.PathElement, corner_radius: List[float]) -> None:
         """Apply rounded corner to inkex.PathElement."""
