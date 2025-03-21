@@ -144,9 +144,10 @@ class CurveConverter:
                     parent.add(elm)
 
         # Guide
-        for guide in artboard.guides:
-            if guide is not None:
-                self.add_guide(guide, tr_vector)
+        if artboard.guides is not None:
+            for guide in artboard.guides:
+                if guide is not None:
+                    self.add_guide(guide, tr_vector)
 
     def load_element(self, element: VNBaseElement) -> Optional[inkex.BaseElement]:
         """Converts an element to an SVG element."""
@@ -166,8 +167,12 @@ class CurveConverter:
             elif isinstance(element, VNBaseElement):
                 return self.convert_base(element)  # will be empty path element
 
+            else:
+                return None
+
         except Exception as e:
             inkex.errormsg(f"Error converting element: {e}")
+            return None
 
     def convert_group(self, group_element: VNGroupElement) -> inkex.Group:
         """
@@ -232,7 +237,7 @@ class CurveConverter:
         image.set("preserveAspectRatio", "none")
         image.set(
             inkex.addNS("href", "xlink"),
-            f"data:image/{img_format.lower()};base64,{image_element.imageData}",
+            f"data:image/{img_format};base64,{image_element.imageData}",
         )
         image.set("width", width)
         image.set("height", height)
@@ -242,9 +247,10 @@ class CurveConverter:
             clip = inkex.ClipPath()
             clip_element = image_element.convert_crop_rect()
 
-            clip.add(clip_element)
-            self.document.defs.add(clip)
-            image.style["clip-path"] = f"url(#{clip.get_id()})"
+            if clip_element is not None:
+                clip.add(clip_element)
+                self.document.defs.add(clip)
+                image.style["clip-path"] = f"url(#{clip.get_id()})"
 
         return image
 
@@ -321,13 +327,18 @@ class CurveConverter:
             )
 
         if text_element.string and text_element.styledText:
-            offset = 0  # global offset(letter count)
-            y_offset = 0
-            line_height = 1.0  # default paragraph margin
+            offset: int = 0  # global offset(letter count)
+            y_offset: float = 0.0
+            line_height: float = 1.0  # default paragraph margin
 
             paragraphs = text_element.string.split("\n")
             styled_index = 0  # current styledText
             remaining_length = 0  # remaining range of styledText
+
+            first_font_size = (
+                text_element.styledText[0].fontSize if text_element.styledText else 0.0
+            )
+            text.style["line-height"] = 1
 
             for para in paragraphs:
                 # line-tspan
@@ -392,6 +403,11 @@ class CurveConverter:
                     styled.fontSize * line_height
                 )  # last font decides line height
                 offset += len(para) + 1
+
+            if first_font_size > 0:
+                if text.transform is None:
+                    text.transform = inkex.transforms.Transform()
+                text.transform.add_translate(0, first_font_size)
 
         return text
 
@@ -571,8 +587,8 @@ class CurveConverter:
                     "Invalid guide path: Not perfectly horizontal or vertical."
                 )
 
-        orientation = False
-        guide_offset = 0
+        orientation: bool = False
+        guide_offset: float = 0.0
 
         if isinstance(guide_element, VNGuideElement):
             guide_offset = guide_element.offset

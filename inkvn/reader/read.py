@@ -36,6 +36,8 @@ class CurveReader:
         document = ext.extract_document(self.archive, manifest)
         drawing_data = ext.extract_drawing_data(document)
 
+        assert drawing_data, "This document has no drawing data."
+
         units = drawing_data["settings"]["units"]
         self.app_version = document["appVersion"]
         self.file_version = manifest["fileFormatVersion"]

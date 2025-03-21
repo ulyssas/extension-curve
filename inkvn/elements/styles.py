@@ -115,8 +115,13 @@ class VNGradient:
         )
         self.transform: Optional[inkex.transforms.Transform] = None
         tr = inkex.transforms.Transform()
+
         if transform_matrix:
-            tr.add_matrix(transform_matrix)
+            assert len(transform_matrix) == 6, (
+                f"Invalid transform matrix length: {len(transform_matrix)}"
+            )
+
+            tr.add_matrix(*transform_matrix)
             self.transform = tr
 
     @staticmethod
@@ -216,11 +221,11 @@ class basicStrokeStyle:
 class styledElementData:
     """
     Stores style attributes for text for passing to
-    read_vn_abst_path / read_vn_abst_text.
+    read_vn_abs_path / read_vn_abs_text.
     """
 
     styled_data: Dict
     mask: int
-    stroke: pathStrokeStyle
+    stroke: Optional[pathStrokeStyle]
     color: Optional[VNColor]
     grad: Optional[VNGradient]

@@ -34,23 +34,31 @@ class pathGeometry:
 
     def parse_nodes(self, closed: bool, nodes: List[Dict]) -> inkex.Path:
         """Converts single pathGeometry data to inkex path."""
-        path = None
+        path = inkex.Path()
+        prev = None
+        outpt = None
 
-        if closed:
+        if closed and nodes:
             nodes.append(nodes[0])
 
         for node in nodes:
             # Path data is stored as  list of [inPoint, anchor, outPoint]
             # (plus some extra attributes for which we don't have enough data atm)
             anchor = inkex.Vector2d(node["anchorPoint"])
-            if path is None:
-                path = inkex.Path([inkex.paths.Move(*anchor)])
+
+            if len(path) == 0:
+                path.append(inkex.paths.Move(*anchor))
             else:
                 inpt = inkex.Vector2d(node["inPoint"])
                 anchor = inkex.Vector2d(node["anchorPoint"])
 
                 # added * to add support for Inkscape 1.3
-                if prev.is_close(outpt) and inpt.is_close(anchor):
+                if (
+                    prev is not None
+                    and inpt is not None
+                    and prev.is_close(outpt)
+                    and inpt.is_close(anchor)
+                ):
                     path.append(inkex.paths.Line(*anchor))
                 else:
                     path.append(inkex.paths.Curve(*outpt, *inpt, *anchor))
@@ -61,7 +69,7 @@ class pathGeometry:
             # add corner radius to the list
             self.corner_radius.append(node["cornerRadius"])
 
-        if closed:
+        if path is not None and closed:
             path.append(inkex.paths.ZoneClose())
 
         return path

@@ -8,7 +8,7 @@ Needs more Vectornator files for reference
 """
 
 import base64
-from typing import Any, Dict, List, Union
+from typing import Any, Dict, List, Union, Optional
 
 import inkex
 
@@ -50,7 +50,11 @@ def read_vn_artboard(archive: Any, gid_json: Dict) -> VNArtboard:
     guide_list: List[VNGuideElement] = []
     for guide in guides:
         if guide is not None:
-            guide_list.append(read_vn_element(archive, guide))
+            guide_element = read_vn_element(archive, guide)
+            assert isinstance(guide_element, VNGuideElement), (
+                f"{guide_element.name}: Invalid guide element."
+            )
+            guide_list.append(guide_element)
 
     # Background Color
     fill_color = None
@@ -178,7 +182,7 @@ def read_vn_element(archive: Any, element: Dict) -> VNBaseElement:
                     color=fill_color,
                     grad=fill_gradient,
                 )
-                return read_vn_abst_path(path_element_data, base_element_data)
+                return read_vn_abs_path(path_element_data, base_element_data)
 
             # Abstract Text (TextElement)
             text_data = stylable.get("subElement", {}).get("text", {}).get("_0")
@@ -190,7 +194,7 @@ def read_vn_element(archive: Any, element: Dict) -> VNBaseElement:
                     color=fill_color,
                     grad=fill_gradient,
                 )
-                return read_vn_abst_text(text_element_data, base_element_data)
+                return read_vn_abs_text(text_element_data, base_element_data)
 
         # if the element is unknown type:
         raise NotImplementedError(
@@ -225,15 +229,18 @@ def read_vn_image(archive: Any, image: Dict, base_element: Dict) -> VNImageEleme
     image_data = ext.read_dat_from_zip(archive, image_file)
 
     # cropping
-    crop_rect = None
-    if image.get("cropRect") is not None:
-        crop_rect = tuple(map(tuple, image.get("cropRect")))
+    crop_rect = image.get("cropRect")
+    if crop_rect is not None:
+        assert isinstance(crop_rect, list) and len(crop_rect) == 2, (
+            f"{base_element.get('name', 'Unnamed Element')}: Invalid crop_rect."
+        )
+        crop_rect = tuple(map(tuple, crop_rect))
     return VNImageElement(
         imageData=image_data, transform=transform, cropRect=crop_rect, **base_element
     )
 
 
-def read_vn_abst_path(
+def read_vn_abs_path(
     path_element: styledElementData, base_element: Dict
 ) -> VNPathElement:
     """Reads path element and returns VNPathElement."""
@@ -300,7 +307,7 @@ def read_vn_abst_path(
     )
 
 
-def read_vn_abst_text(
+def read_vn_abs_text(
     text_element: styledElementData, base_element: Dict
 ) -> VNBaseElement:
     """
@@ -353,24 +360,24 @@ def read_styled_text(
         #    stroke = pathStrokeStyle(stroke_style, stroke)
 
         styled_text = singleStyledText(
-            length=style.get("length"),
-            fontName=style.get("fontName"),
-            fontSize=style.get("fontSize"),
-            alignment=style.get("alignment"),
-            kerning=style.get("kerning"),
+            length=style["length"],
+            fontName=style["fontName"],
+            fontSize=style["fontSize"],
+            alignment=style["alignment"],
+            kerning=style.get("kerning", 0.0),
             lineHeight=style.get("lineHeight"),
             fillColor=color,
             fillGradient=None,  # TODO gradient applies globally
             strokeStyle=None,
-            strikethrough=style.get("strikethrough"),
-            underline=style.get("underline"),
+            strikethrough=style.get("strikethrough", False),
+            underline=style.get("underline", False),
         )
         styled_text_list.append(styled_text)
 
     return styled_text_list
 
 
-def read_vn_stroke(stylable: Dict) -> pathStrokeStyle:
+def read_vn_stroke(stylable: Dict) -> Union[pathStrokeStyle, None]:
     """Reads stroke style and returns as class."""
     stroke_style = stylable.get("strokeStyle")
     if stroke_style is not None:
@@ -385,10 +392,12 @@ def read_vn_stroke(stylable: Dict) -> pathStrokeStyle:
             color=VNColor(color_dict=stroke_style["color"]),
             width=stroke_style["width"],
         )
+    else:
+        return None
 
 
 def read_vn_fill(
-    stylable: Dict, single_style: Dict = None
+    stylable: Dict, single_style: Optional[Dict] = None
 ) -> Union[VNGradient, VNColor, None]:
     """Reads fill data and returns as class."""
     # fill
@@ -396,10 +405,9 @@ def read_vn_fill(
     fill_color = stylable.get("fillColor")
     fill_gradient = stylable.get("fillGradient")
 
-    # Vectornator 4.13.2, format 13
-    if fill_data is not None:
-        color: Dict = fill_data.get("color", {}).get("_0")
-        gradient: Dict = fill_data.get("gradient", {}).get("_0")
+    def _process_fills(
+        gradient: Optional[Dict], color: Optional[Dict]
+    ) -> Union[VNGradient, VNColor, None]:
         if gradient is not None:
             return VNGradient(
                 fill_transform=stylable["fillTransform"],
@@ -409,30 +417,23 @@ def read_vn_fill(
             )
         elif color is not None:
             return VNColor(color_dict=color)
+        else:
+            return None
 
     # singleStyles (Vectornator 4.13.6, format 19)
     if single_style is not None and single_style.get("fill") is not None:
         fill_data = single_style["fill"]
+
+    # Vectornator 4.13.2, format 13
+    if fill_data is not None:
         color: Dict = fill_data.get("color", {}).get("_0")
         gradient: Dict = fill_data.get("gradient", {}).get("_0")
-        if gradient is not None:
-            return VNGradient(
-                fill_transform=stylable["fillTransform"],
-                transform_matrix=stylable["fillTransform"]["transform"],
-                stops=gradient["stops"],
-                typeRawValue=gradient["typeRawValue"],
-            )
-        elif color is not None:
-            return VNColor(color_dict=color)
+
+        return _process_fills(gradient, color)
 
     # Vectornator 4.10.4, format 8
     elif fill_color is not None or fill_gradient is not None:
-        if fill_gradient is not None:
-            return VNGradient(
-                fill_transform=stylable["fillTransform"],
-                transform_matrix=stylable["fillTransform"]["transform"],
-                stops=fill_gradient["stops"],
-                typeRawValue=fill_gradient["typeRawValue"],
-            )
-        elif fill_color is not None:
-            return VNColor(color_dict=fill_color)
+        return _process_fills(fill_gradient, fill_color)
+
+    else:
+        return None

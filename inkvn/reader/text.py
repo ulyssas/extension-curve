@@ -71,6 +71,10 @@ def decode_old_text(unserialized: Dict) -> List[Dict]:
         lengths = [{"length": len(string), "attribute_id": 0}]
         styles = [styles]
 
+    # empty
+    if lengths is None:
+        return formatted_data
+
     for length_info in lengths:
         length = length_info["length"]
         attribute_id = length_info["attribute_id"]

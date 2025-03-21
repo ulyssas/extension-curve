@@ -25,7 +25,7 @@ class TestCurveConverter(ComparisonMixin, TestCase):
         "./variousshapes.vectornator",
     ]
 
-    comparisons = [tuple(), ("--pretty",)]
+    comparisons = [tuple(), ("--pretty", "true")]
     compare_filters = [CompareOrderIndependentStyle()]
 
 

@@ -103,7 +103,7 @@ def extract_document(
 
 def extract_drawing_data(document: Dict[str, Any]) -> Dict[str, Any]:
     """Return the 'drawing' data from the Document.json."""
-    return document.get("drawing")
+    return document.get("drawing", {})
 
 
 def extract_gid_json(archive: zipfile.ZipFile, artboard_path: str) -> Dict[str, Any]:

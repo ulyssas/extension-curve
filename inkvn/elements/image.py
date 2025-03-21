@@ -27,9 +27,12 @@ class VNImageElement(VNBaseElement):
 
     def image_format(self) -> str:
         """Detect the image format of b64 encoded image."""
-        binary_data = base64.b64decode(self.imageData)
-        image = Image.open(BytesIO(binary_data))
-        return image.format
+        try:
+            binary_data = base64.b64decode(self.imageData)
+            image = Image.open(BytesIO(binary_data))
+            return image.format.lower() if image.format else "png"
+        except Exception:
+            return "png"
 
     def image_dimension(self) -> Tuple[int, int]:
         """Detect the dimension format of b64 encoded image."""
@@ -45,3 +48,5 @@ class VNImageElement(VNBaseElement):
             clip_rect = inkex.Rectangle.new(x, y, width, height)
             clip_rect.label = f"{self.name}_crop"
             return clip_rect
+
+        return None

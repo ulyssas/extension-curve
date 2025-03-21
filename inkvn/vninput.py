@@ -30,14 +30,14 @@ class CurveInput(inkex.InputExtension):
         """Add command line arguments and inx parameter."""
         pars.add_argument(
             "--clip_page",
-            action="store_true",
+            type=inkex.Boolean,
             dest="clip_page",
             default=False,
             help="Clip pages to hide elements outside artboards.",
         )
         pars.add_argument(
             "--pretty",
-            action="store_true",
+            type=inkex.Boolean,
             dest="pretty_print",
             default=False,
             help="Create an SVG file that has several lines and looks pretty to read.",
