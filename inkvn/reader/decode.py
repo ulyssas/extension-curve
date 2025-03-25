@@ -68,10 +68,8 @@ def read_artboard(archive: Any, gid_json: Dict) -> VNArtboard:
         guide = get_json_element(gid_json, "elements", guide_id)
         if guide is not None:
             guide_element = read_element(archive, gid_json, guide)
-            assert isinstance(guide_element, VNGuideElement), (
-                f"{guide_element.name}: Invalid guide element."
-            )
-            guide_list.append(guide_element)
+            if isinstance(guide_element, VNGuideElement):
+                guide_list.append(guide_element)
 
     # Background Color
     fill_color = None

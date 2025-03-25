@@ -8,7 +8,6 @@ from dataclasses import dataclass
 from typing import List, Optional
 
 from .base import VNBaseElement
-from .guide import VNGuideElement
 from .styles import VNColor, VNGradient
 
 
@@ -19,7 +18,7 @@ class VNArtboard:
     title: str
     frame: Frame
     layers: List[VNLayer]
-    guides: Optional[List[VNGuideElement]]
+    guides: Optional[List[VNBaseElement]]
     fillColor: Optional[VNColor]
     fillGradient: Optional[VNGradient]
 

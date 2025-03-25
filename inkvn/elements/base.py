@@ -91,7 +91,7 @@ class VNTransform:
 
         if with_scale and (sx != 1 or sy != 1):
             # Scale by (sx, sy)
-            if keep_proportion == True:
+            if keep_proportion:
                 tr.add_scale(sx)
             else:
                 tr.add_scale(sx, sy)

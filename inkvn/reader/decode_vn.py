@@ -8,7 +8,7 @@ Needs more Vectornator files for reference
 """
 
 import base64
-from typing import Any, Dict, List, Union, Optional
+from typing import Any, Dict, List, Optional, Union
 
 import inkex
 
@@ -47,14 +47,12 @@ def read_vn_artboard(archive: Any, gid_json: Dict) -> VNArtboard:
 
     # Guides
     guides = gid_json["guideLayer"]["elements"]
-    guide_list: List[VNGuideElement] = []
+    guide_list: List[VNBaseElement] = []
     for guide in guides:
         if guide is not None:
             guide_element = read_vn_element(archive, guide)
-            assert isinstance(guide_element, VNGuideElement), (
-                f"{guide_element.name}: Invalid guide element."
-            )
-            guide_list.append(guide_element)
+            if isinstance(guide_element, (VNGuideElement, VNGroupElement)):
+                guide_list.append(guide_element)
 
     # Background Color
     fill_color = None

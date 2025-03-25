@@ -7,8 +7,8 @@ Convert the intermediate data to Inkscape read by read.py
 from typing import List, Optional, Tuple, Union
 
 import inkex
-from inkex.base import SvgOutputMixin
 import lxml.etree
+from inkex.base import SvgOutputMixin
 
 from ..reader.read import CurveReader
 
