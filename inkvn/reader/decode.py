@@ -63,7 +63,7 @@ def read_artboard(archive: Any, gid_json: Dict) -> VNArtboard:
     # the very last layer has the guide
     guide_layer = existing_layers[len(layer_list)]
     guide_ids = guide_layer["elementIds"]
-    guide_list: List[VNGuideElement] = []
+    guide_list: List[VNBaseElement] = []
     for guide_id in guide_ids:
         guide = get_json_element(gid_json, "elements", guide_id)
         if guide is not None:
@@ -243,15 +243,16 @@ def read_group(
 
 def read_image(
     archive: Any, gid_json: Dict, image_id: int, base_element: Dict
-) -> VNImageElement:
+) -> Union[VNImageElement, VNBaseElement]:
     """Reads image element, encodes image in Base64 and returns VNImageElement."""
     # relativePath contains *.dat (bitmap data)
     # sharedFileImage doesn't exist in 5.1.1 (file version 21) document
     # Curve 5.13.0, format 40 uses abstractImage
     # TODO format 40 support lags behind other versions(14, 19, 44)
-    transform = None
     image_data_id = None
+    transform = None
     crop_rect = None
+    encoded_image = ""
 
     image = get_json_element(gid_json, "images", image_id)
     abs_image = get_json_element(gid_json, "abstractImages", image_id)
@@ -284,11 +285,19 @@ def read_image(
             )
             crop_rect = tuple(map(tuple, crop_rect))
 
-    image_file = get_json_element(gid_json, "imageDatas", image_data_id)["relativePath"]
-    image_data = ext.read_dat_from_zip(archive, image_file)
-    return VNImageElement(
-        imageData=image_data, transform=transform, cropRect=crop_rect, **base_element
-    )
+    if isinstance(image_data_id, int):
+        image_data = get_json_element(gid_json, "imageDatas", image_data_id)
+        if image_data is not None:
+            image_file = image_data["relativePath"]
+            encoded_image = ext.read_dat_from_zip(archive, image_file)
+        return VNImageElement(
+            imageData=encoded_image,
+            transform=transform,
+            cropRect=crop_rect,
+            **base_element,
+        )
+    else:
+        return VNBaseElement(**base_element)
 
 
 def read_abs_path(
@@ -326,15 +335,15 @@ def read_abs_path(
         path_geometry_list: List[pathGeometry] = []
         if path_id is not None:
             path = get_json_element(gid_json, "paths", path_id)
-
-            # Path Geometry
-            geometry_id = path.get("geometryId")
-            if geometry_id is not None:
-                path_geometry_list.append(
-                    pathGeometry(
-                        **get_json_element(gid_json, "pathGeometries", geometry_id)
+            if path is not None:
+                # Path Geometry
+                geometry_id = path.get("geometryId")
+                if geometry_id is not None:
+                    path_geometry = get_json_element(
+                        gid_json, "pathGeometries", geometry_id
                     )
-                )
+                    if path_geometry is not None:
+                        path_geometry_list.append(pathGeometry(**path_geometry))
 
         # compoundPath
         compound_path_id = (
@@ -391,11 +400,11 @@ def read_abs_text(
 
         # texts(layout??), will be named textProperty internally
         if text_id is not None:
-            text_property = get_json_element(gid_json, "texts", text_id)
-            if text_property is not None:
+            text_prop_dict = get_json_element(gid_json, "texts", text_id)
+            if text_prop_dict is not None:
                 text_property = textProperty(
-                    textFrameLimits=text_property.get("textFrameLimits"),
-                    textFramePivot=text_property.get("textFramePivot"),
+                    textFrameLimits=text_prop_dict.get("textFrameLimits"),
+                    textFramePivot=text_prop_dict.get("textFramePivot"),
                 )
 
         # text stroke_style only contains basicStrokeStyle
@@ -433,11 +442,12 @@ def read_abs_text(
         # I cannot replicate textProperty in legacy format
         text_id = abstract_text.get("subElement", {}).get("text", {}).get("_0")
         if text_id is not None:
-            text_property = get_json_element(gid_json, "texts", text_id)
-            transform = text_property.get("transform")  # matrix
-            # resize_mode = text_property.get("resizeMode")
-            # height = text_property.get("height")
-            # width = text_property.get("width")
+            text_prop_dict = get_json_element(gid_json, "texts", text_id)
+            if text_prop_dict is not None:
+                transform = text_prop_dict.get("transform")  # matrix
+                # resize_mode = text_property.get("resizeMode")
+                # height = text_property.get("height")
+                # width = text_property.get("width")
 
         # styledText
         styled_text = NSKeyedUnarchiver(
@@ -451,7 +461,7 @@ def read_abs_text(
             string=string,
             transform=transform,
             styledText=styled_text_list,
-            textProperty=text_property,  # TODO Illegal format
+            textProperty=text_property,  # TODO no text property
             **base_element,
         )
     else:

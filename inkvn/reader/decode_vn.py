@@ -224,7 +224,7 @@ def read_vn_image(archive: Any, image: Dict, base_element: Dict) -> VNImageEleme
     # relativePath contains *.dat (bitmap data)
     transform = image["transform"]
     image_file = image["imageData"]["relativePath"]
-    image_data = ext.read_dat_from_zip(archive, image_file)
+    encoded_image = ext.read_dat_from_zip(archive, image_file)
 
     # cropping
     crop_rect = image.get("cropRect")
@@ -234,7 +234,7 @@ def read_vn_image(archive: Any, image: Dict, base_element: Dict) -> VNImageEleme
         )
         crop_rect = tuple(map(tuple, crop_rect))
     return VNImageElement(
-        imageData=image_data, transform=transform, cropRect=crop_rect, **base_element
+        imageData=encoded_image, transform=transform, cropRect=crop_rect, **base_element
     )
 
 

@@ -36,9 +36,12 @@ class VNImageElement(VNBaseElement):
 
     def image_dimension(self) -> Tuple[int, int]:
         """Detect the dimension format of b64 encoded image."""
-        binary_data = base64.b64decode(self.imageData)
-        image = Image.open(BytesIO(binary_data))
-        return image.width, image.height
+        try:
+            binary_data = base64.b64decode(self.imageData)
+            image = Image.open(BytesIO(binary_data))
+            return image.width, image.height
+        except Exception:
+            return (0, 0)
 
     def convert_crop_rect(self) -> Union[inkex.Rectangle, None]:
         if self.cropRect is not None:
