@@ -81,25 +81,14 @@ test:validate-inx:
 
 test:compliance:
   stage: test
+  # parallel builds, see https://docs.gitlab.com/ee/ci/yaml/#parallelmatrix
+  # and see https://docs.gitlab.com/ee/ci/jobs/job_control.html#run-a-one-dimensional-matrix-of-parallel-jobs
   parallel:
     matrix:
-      - TOX_ENV: [codestyle]
+      - TOX_ENV: [types, codestyle]
   before_script:
     - source /root/pyenv-init
     # test with lowest version required to comply
     - pyenv shell 3.10
   script:
     - tox -e $TOX_ENV
-
-test:compliance_informational:
-  stage: test
-  parallel:
-    matrix:
-      - TOX_ENV: [types]
-  before_script:
-    - source /root/pyenv-init
-    # test with lowest version required to comply
-    - pyenv shell 3.10
-  script:
-    - tox -e $TOX_ENV
-  allow_failure: true
