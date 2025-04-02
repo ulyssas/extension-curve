@@ -39,7 +39,7 @@ class CurveInput(inkex.InputExtension):
             "--pretty",
             type=inkex.Boolean,
             dest="pretty_print",
-            default=False,
+            default=True,
             help="Create an SVG file that has several lines and looks pretty to read.",
         )
 

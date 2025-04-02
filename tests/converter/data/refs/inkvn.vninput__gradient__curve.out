@@ -1,2 +1,28 @@
-<!-- Converted by extension-curve --><svg xmlns="http://www.w3.org/2000/svg" xmlns:svg="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd" xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape" viewBox="0 0 800 600" width="800" height="600">
-    <defs><linearGradient x1="-128.2013279212137" y1="-115.46329314929586" x2="51.46566846080549" y2="108.29723950961053" gradientUnits="userSpaceOnUse" gradientTransform="matrix(1.29049 0 0 0.93295 274.104 171.429)" id="linearGradient5815"><stop offset="0" style="stop-color:#FF0000;stop-opacity:1"/><stop offset="0.26272371364653246" style="stop-color:#FFEC00;stop-opacity:1"/><stop offset="0.5978048098434005" style="stop-color:#30FF00;stop-opacity:1"/><stop offset="0.7651006711409396" style="stop-color:#00FFFE;stop-opacity:1"/><stop offset="0.9798657718120806" style="stop-color:#8146FF;stop-opacity:1"/></linearGradient><radialGradient cx="-76.84898506414208" cy="62.75812302473315" r="169.33641360926248" gradientUnits="userSpaceOnUse" gradientTransform="matrix(1.29049 0 0 0.93295 497.4 421.544)" id="radialGradient8555"><stop offset="0" style="stop-color:#FF0000;stop-opacity:1"/><stop offset="0.26272371364653246" style="stop-color:#FFEC00;stop-opacity:1"/><stop offset="0.5978048098434005" style="stop-color:#30FF00;stop-opacity:1"/><stop offset="0.7651006711409396" style="stop-color:#00FFFE;stop-opacity:1"/><stop offset="0.9798657718120806" style="stop-color:#8146FF;stop-opacity:1"/></radialGradient></defs><sodipodi:namedview><inkscape:page x="0" y="0" width="800" height="600" inkscape:label="Gradient"/></sodipodi:namedview><g inkscape:groupmode="layer" inkscape:label="Gradient"><g inkscape:groupmode="layer" inkscape:label="Layer 1" opacity="1" style="display:inline"><path inkscape:label="Linear" style="opacity:1;mix-blend-mode:normal;display:inline;stroke:none;fill:url(#linearGradient5815);fill-rule:nonzero" d="M 74.1039 71.4289 L 474.104 71.4289 L 474.104 271.429 L 74.1039 271.429 L 74.1039 71.4289 Z"/><path inkscape:label="Radial" style="opacity:1;mix-blend-mode:normal;display:inline;stroke:none;fill:url(#radialGradient8555);fill-rule:nonzero" d="M 297.4 321.544 L 697.4 321.544 L 697.4 521.544 L 297.4 521.544 L 297.4 321.544 Z"/></g></g></svg>
+<!-- Converted by extension-curve -->
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:svg="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd" xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape" viewBox="0 0 800 600" width="800" height="600">
+  <defs>
+    <linearGradient x1="-128.2013279212137" y1="-115.46329314929586" x2="51.46566846080549" y2="108.29723950961053" gradientUnits="userSpaceOnUse" gradientTransform="matrix(1.29049 0 0 0.93295 274.104 171.429)" id="linearGradient5815">
+      <stop offset="0" style="stop-color:#FF0000;stop-opacity:1"/>
+      <stop offset="0.26272371364653246" style="stop-color:#FFEC00;stop-opacity:1"/>
+      <stop offset="0.5978048098434005" style="stop-color:#30FF00;stop-opacity:1"/>
+      <stop offset="0.7651006711409396" style="stop-color:#00FFFE;stop-opacity:1"/>
+      <stop offset="0.9798657718120806" style="stop-color:#8146FF;stop-opacity:1"/>
+    </linearGradient>
+    <radialGradient cx="-76.84898506414208" cy="62.75812302473315" r="169.33641360926248" gradientUnits="userSpaceOnUse" gradientTransform="matrix(1.29049 0 0 0.93295 497.4 421.544)" id="radialGradient8555">
+      <stop offset="0" style="stop-color:#FF0000;stop-opacity:1"/>
+      <stop offset="0.26272371364653246" style="stop-color:#FFEC00;stop-opacity:1"/>
+      <stop offset="0.5978048098434005" style="stop-color:#30FF00;stop-opacity:1"/>
+      <stop offset="0.7651006711409396" style="stop-color:#00FFFE;stop-opacity:1"/>
+      <stop offset="0.9798657718120806" style="stop-color:#8146FF;stop-opacity:1"/>
+    </radialGradient>
+  </defs>
+  <sodipodi:namedview>
+    <inkscape:page x="0" y="0" width="800" height="600" inkscape:label="Gradient"/>
+  </sodipodi:namedview>
+  <g inkscape:groupmode="layer" inkscape:label="Gradient">
+    <g inkscape:groupmode="layer" inkscape:label="Layer 1" opacity="1" style="display:inline">
+      <path inkscape:label="Linear" style="opacity:1;mix-blend-mode:normal;display:inline;stroke:none;fill:url(#linearGradient5815);fill-rule:nonzero" d="M 74.1039 71.4289 L 474.104 71.4289 L 474.104 271.429 L 74.1039 271.429 L 74.1039 71.4289 Z"/>
+      <path inkscape:label="Radial" style="opacity:1;mix-blend-mode:normal;display:inline;stroke:none;fill:url(#radialGradient8555);fill-rule:nonzero" d="M 297.4 321.544 L 697.4 321.544 L 697.4 521.544 L 297.4 521.544 L 297.4 321.544 Z"/>
+    </g>
+  </g>
+</svg>
