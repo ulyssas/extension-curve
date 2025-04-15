@@ -139,7 +139,7 @@ def read_vn_element(archive: Any, element: Dict) -> VNBaseElement:
         stylable = element.get("subElement", {}).get("stylable", {}).get("_0")
         if stylable is not None:
             # clipping mask
-            mask = stylable.get("mask", 0)
+            mask = bool(stylable.get("mask", 0))
 
             # Stroke Style
             stroke_style = read_vn_stroke(stylable)

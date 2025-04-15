@@ -225,7 +225,7 @@ class styledElementData:
     """
 
     styled_data: Dict
-    mask: int
+    mask: bool
     stroke: Optional[pathStrokeStyle]
     color: Optional[VNColor]
     grad: Optional[VNGradient]

@@ -55,6 +55,7 @@ class CurveConverter:
         self.doc = SvgOutputMixin.get_template(
             width=first_artboard.frame.width,
             height=first_artboard.frame.height,
+            unit=self.reader.convert_unit(),
         )
         self.document = self.doc.getroot()
 
@@ -88,7 +89,7 @@ class CurveConverter:
     ) -> None:
         """Convert  VNArtboard to inkex page."""
 
-        # artboards have translations
+        # translations of artboards
         tr = inkex.transforms.Transform()
         tr_vector = inkex.Vector2d(
             artboard.frame.x - self.offset_x, artboard.frame.y - self.offset_y
@@ -135,7 +136,7 @@ class CurveConverter:
             parent.style["display"] = "inline" if layer.isVisible else "none"
             if layer.isLocked:
                 parent.set("sodipodi:insensitive", "true")
-            # ? isExpanded
+            # isExpanded is there, but not in use
 
             # elements in the layer
             for element in layer.elements:
@@ -193,7 +194,7 @@ class CurveConverter:
         clip = None
         for child in group_element.groupElements:
             # find the clipping mask
-            if isinstance(child, VNPathElement) and child.mask == 1:
+            if isinstance(child, VNPathElement) and child.mask:
                 clip_path_child = child
                 break
 

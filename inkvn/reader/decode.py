@@ -166,7 +166,7 @@ def read_element(archive: Any, gid_json: Dict, element: Dict) -> VNBaseElement:
 
             if stylable is not None:
                 # clipping mask
-                mask = stylable.get("mask", 0)
+                mask = bool(stylable.get("mask", 0))
 
                 # will be used to return PathElement
                 fill_id = None
@@ -547,12 +547,12 @@ def read_fill(
         # Old Curve like 5.1.1
         else:
             fill_transform_id = stylable.get("fillTransformId")
-            assert fill_transform_id != None, "Invalid gradient."
+            assert fill_transform_id is not None, "Invalid gradient."
 
             fill_transform = get_json_element(
                 gid_json, "fillTransforms", fill_transform_id
             )
-            assert fill_transform != None, "Invalid gradient."
+            assert fill_transform is not None, "Invalid gradient."
 
             return VNGradient(
                 fill_transform=fill_transform,

@@ -28,6 +28,7 @@ class CurveReader:
         self.archive = zipfile.ZipFile(stream, "r")
         self.file_version: int = 44  # main support
         self.app_version: str
+        self.units: str = "px"
         self.artboards: List[VNArtboard] = []
 
         self.read()
@@ -39,7 +40,7 @@ class CurveReader:
 
         assert drawing_data, "This document has no drawing data."
 
-        units = drawing_data["settings"]["units"]
+        self.units = drawing_data["settings"]["units"]
         self.app_version = document["appVersion"]
         self.file_version = manifest["fileFormatVersion"]
         artboard_paths = drawing_data["artboardPaths"]
@@ -48,9 +49,6 @@ class CurveReader:
         # inkex.utils.debug(f"App version: {self.app_version}, File version: {self.file_version}, File name: {self.archive.filename}")
 
         assert len(artboard_paths), "No artboard paths found in the document."
-
-        # will be used later (as Inkscape attribute)
-        # print(f"Unit: {units}")
 
         # Read Artboard (GUID JSON)
         for artboard_path in artboard_paths:
@@ -65,6 +63,18 @@ class CurveReader:
             else:
                 artboard = dvn.read_vn_artboard(self.archive, gid_json)
                 self.artboards.append(artboard)
+
+    def convert_unit(self):
+        """Convert document unit to SVG."""
+        unit_map = {
+            "Points": "pt",
+            "Picas": "pc",
+            "Inches": "in",
+            "Millimeters": "mm",
+            "Centimeters": "cm",
+            "Pixels": "px",
+        }
+        return unit_map.get(self.units, "px")
 
     @staticmethod
     def check_if_curve(input_version: str):
