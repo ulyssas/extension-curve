@@ -62,8 +62,13 @@ class pathGeometry:
             prev = anchor
             outpt = inkex.Vector2d(node["outPoint"])
 
-            # add corner radius to the list
-            self.corner_radius.append(node["cornerRadius"])
+            # add corner radius to the list if the node is sharp
+            # "disconnected", "asymmetric", "symmetric"
+            # nodeType exists only in Curve
+            node_type = node.get("nodeType")
+            if node_type is not None:
+                if isinstance(node_type.get("disconnected"), dict):
+                    self.corner_radius.append(node["cornerRadius"])
 
         if path is not None and closed:
             path.append(inkex.paths.ZoneClose())
