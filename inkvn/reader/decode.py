@@ -498,7 +498,7 @@ def read_styled_text(styles: List[Dict]) -> List[singleStyledText]:
     return styled_text_list
 
 
-def read_stroke(gid_json: Dict, stroke_id: int) -> Union[pathStrokeStyle, None]:
+def read_stroke(gid_json: Dict, stroke_id: int) -> Optional[pathStrokeStyle]:
     """Reads stroke style and returns as class."""
     stroke_style = get_json_element(gid_json, "pathStrokeStyles", stroke_id)
 

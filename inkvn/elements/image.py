@@ -5,7 +5,7 @@ VNImageElement
 import base64
 from dataclasses import dataclass
 from io import BytesIO
-from typing import List, Optional, Tuple, Union
+from typing import List, Optional, Tuple
 
 import inkex
 from PIL import Image
@@ -24,6 +24,7 @@ class VNImageElement(VNBaseElement):
     imageData: str
     transform: Optional[List[float]]
     cropRect: Optional[Tuple[Tuple[float, float], Tuple[float, float]]]
+    """(width, height), (x, y)"""
 
     def image_format(self) -> str:
         """Detect the image format of b64 encoded image."""
@@ -43,7 +44,7 @@ class VNImageElement(VNBaseElement):
         except Exception:
             return (0, 0)
 
-    def convert_crop_rect(self) -> Union[inkex.Rectangle, None]:
+    def convert_crop_rect(self) -> Optional[inkex.Rectangle]:
         if self.cropRect is not None:
             width, height = self.cropRect[1]
             x, y = self.cropRect[0]

@@ -264,9 +264,11 @@ def read_vn_abs_path(
     path_geometry_list: List[pathGeometry] = []
 
     if path_data is not None:
+        # textPath
         text_path = path_data.get("subElement", {}).get("textPath", {}).get("_0")
         if text_path is not None:
             inkex.utils.debug(f"{base_element['name']}: textOnPath is not supported.")
+
         _add_path(path_data, path_geometry_list)
 
     # compoundPath
@@ -375,7 +377,7 @@ def read_styled_text(
     return styled_text_list
 
 
-def read_vn_stroke(stylable: Dict) -> Union[pathStrokeStyle, None]:
+def read_vn_stroke(stylable: Dict) -> Optional[pathStrokeStyle]:
     """Reads stroke style and returns as class."""
     stroke_style = stylable.get("strokeStyle")
     if stroke_style is not None:
