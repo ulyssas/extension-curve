@@ -246,12 +246,12 @@ def read_vn_abs_path(
     def _add_path(path_data: Dict, path_geometry_list: List[pathGeometry]) -> None:
         """appends path data to list"""
         geometry = path_data.get("geometry")
-        # AbstractPath
+        # AbstractPath (direct)
         if path_data.get("nodes") is not None:
             path_geometry_list.append(
                 pathGeometry(closed=path_data["closed"], nodes=path_data["nodes"])
             )
-        # SingleStyle
+        # SingleStyle (below geometry)
         elif geometry is not None:
             path_geometry_list.append(
                 pathGeometry(closed=geometry["closed"], nodes=geometry["nodes"])
@@ -283,7 +283,7 @@ def read_vn_abs_path(
                 sub_stylable = (
                     sub_element.get("subElement", {}).get("stylable", {}).get("_0")
                 )
-                # Vectornator 4.13.5, format 16
+                # Vectornator 4.13.5, format 16 and 4.13.4 (14)
                 if sub_stylable is not None:
                     sub_path = sub_stylable["subElement"]["abstractPath"]["_0"][
                         "subElement"
@@ -348,7 +348,7 @@ def read_styled_text(
         # color
         if style.get("fillColor") is not None:
             color = VNColor(style["fillColor"])
-        # if there's no styles in text data, use global style
+        # fallbacks to global style if there's no styles in text data
         elif global_style.color is not None:
             color = global_style.color
 
@@ -398,10 +398,6 @@ def read_vn_fill(
     stylable: Dict, single_style: Optional[Dict] = None
 ) -> Union[VNGradient, VNColor, None]:
     """Reads fill data and returns as class."""
-    # fill
-    fill_data = stylable.get("fill")
-    fill_color = stylable.get("fillColor")
-    fill_gradient = stylable.get("fillGradient")
 
     def _process_fills(
         gradient: Optional[Dict], color: Optional[Dict]
@@ -417,6 +413,11 @@ def read_vn_fill(
             return VNColor(color_dict=color)
         else:
             return None
+
+    # fill
+    fill_data = stylable.get("fill")
+    fill_color = stylable.get("fillColor")
+    fill_gradient = stylable.get("fillGradient")
 
     # singleStyles (Vectornator 4.13.6, format 19)
     if single_style is not None and single_style.get("fill") is not None:

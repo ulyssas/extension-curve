@@ -71,33 +71,26 @@ class VNTransform:
         with_scale determines whether to include scale or not.
         """
 
-        # Extract values
         rotation_deg = math.degrees(self.rotation)
         sx, sy = self.scale
         # Shear is given in radians
         shear_deg = math.degrees(math.atan(self.shear))
         tx, ty = self.translation
 
-        # Create transform components
-        # The order matters
         tr = inkex.transforms.Transform()
         if tx != 0 or ty != 0:
-            # Translate by (tx, ty)
             tr.add_translate(tx, ty)
 
         if self.rotation != 0:
-            # Rotate around origin (adjust if a specific pivot is needed)
             tr.add_rotate(rotation_deg)
 
         if with_scale and (sx != 1 or sy != 1):
-            # Scale by (sx, sy)
             if keep_proportion:
                 tr.add_scale(sx)
             else:
                 tr.add_scale(sx, sy)
 
         if self.shear != 0:
-            # Skew in the X direction
             tr.add_skewx(shear_deg)
 
         return tr

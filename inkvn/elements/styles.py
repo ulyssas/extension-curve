@@ -139,7 +139,7 @@ class VNGradient:
             cx, cy = tr["start"]
             fx, fy = tr["end"]
 
-            # Calculate radius (r) from start and end points. ??
+            # Calculate radius (r) from start and end points.
             r = ((fx - cx) ** 2 + (fy - cy) ** 2) ** 0.5
 
             gradient = inkex.RadialGradient()
@@ -225,6 +225,7 @@ class styledElementData:
     """
 
     styled_data: Dict
+    """abstractText(Vectornator) or abstractPath"""
     mask: bool
     stroke: Optional[pathStrokeStyle]
     color: Optional[VNColor]

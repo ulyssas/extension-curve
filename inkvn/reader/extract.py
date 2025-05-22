@@ -18,7 +18,6 @@ def read_json_from_zip(
 ) -> Dict[str, Any]:
     """Reads JSON file from zip, handling nested folders and embedded zip files."""
     try:
-        # Get archive name
         archive_name = archive.filename
 
         # Check if the file exists at the top level
@@ -57,7 +56,6 @@ def read_dat_from_zip(
 ) -> str:
     """Encode dat (bitmap) file from zip (Vectornator file) in Base64 string."""
     try:
-        # Get archive name
         archive_name = archive.filename
 
         if file_name in archive.namelist():
@@ -69,7 +67,6 @@ def read_dat_from_zip(
                 with archive.open(name) as f:
                     return base64.b64encode(f.read()).decode("utf-8")
 
-            # extract .curve / .vectornator if it's there
             if name.endswith((".curve", ".vectornator")) and max_depth > 0:
                 with archive.open(name) as nested_zip_file:
                     with zipfile.ZipFile(

@@ -16,7 +16,8 @@ class VNTextElement(VNBaseElement):
     """rich text data."""
 
     string: str
-    transform: Optional[List[float]]  # matrix(legacy)
+    transform: Optional[List[float]]
+    """legacy transform in matrix."""
     styledText: Optional[List[singleStyledText]]
     textProperty: Optional[textProperty]
 
@@ -52,5 +53,6 @@ class textProperty:
     # "fixedSize":{"height": float,"width": float}
     # autos don't contain values
     # TODO textProperty is not compatible with format 26 text
-    textFrameLimits: Optional[Dict]  # autoWidth, autoHeight, fixedSize
+    textFrameLimits: Optional[Dict]
+    """autoWidth, autoHeight, fixedSize"""
     textFramePivot: Optional[Tuple[float, float]]

@@ -63,8 +63,7 @@ class pathGeometry:
             outpt = inkex.Vector2d(node["outPoint"])
 
             # add corner radius to the list if the node is sharp
-            # "disconnected", "asymmetric", "symmetric"
-            # nodeType exists only in Curve
+            # nodeType(Curve Only): "disconnected", "asymmetric", "symmetric"
             node_type = node.get("nodeType")
             if node_type is not None:
                 if isinstance(node_type.get("disconnected"), dict):

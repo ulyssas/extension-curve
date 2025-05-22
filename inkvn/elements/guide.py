@@ -12,4 +12,5 @@ class VNGuideElement(VNBaseElement):
     """Guide element."""
 
     offset: float
-    orientation: int  # 0: vertical, 1: horizontal
+    orientation: int
+    """0 means vertical and 1 means horizontal."""
