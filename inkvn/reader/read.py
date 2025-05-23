@@ -10,9 +10,9 @@ from typing import List
 import inkex
 from packaging import version
 
-import inkvn.reader.decode as d
 import inkvn.reader.decode_vn as dvn
 import inkvn.reader.extract as ext
+from inkvn.reader.decode import CurveDecoder
 
 from ..elements.artboard import VNArtboard
 
@@ -56,8 +56,12 @@ class CurveReader:
 
             # if the file is Linearity Curve
             if self.check_if_curve(self.app_version):
-                artboard = d.read_artboard(self.archive, gid_json)
-                self.artboards.append(artboard)
+                decoder = CurveDecoder(
+                    archive=self.archive,
+                    gid_json=gid_json,
+                    is_curve=self.check_if_curve(self.app_version),
+                )
+                self.artboards.append(decoder.artboard)
 
             # if the file is Vectornator
             else:

@@ -1,566 +1,622 @@
 """
-VI decoders
+inkvn Unified decoder
 
-converts Linearity Curve (5.x) JSON data to inkvn.
-This handles Curve documents with flattened JSON (IDs).
+converts both Vectornator JSON and Linearity Curve JSON data to inkvn.
+This is used for Linearity Curve 5.0.x import as well (which are format 19).
 
-Needs files that are fileFormatVersion 30~39.
+Needs more Vectornator files and fileFormatVersion 30~39 for reference
 """
 
 import base64
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import inkex
 
 import inkvn.reader.extract as ext
 import inkvn.reader.text as t
+from inkvn.const import CURVE_MAPPING
 from inkvn.utils import NSKeyedUnarchiver
 
-from ..elements.artboard import VNArtboard, VNLayer, Frame
+from ..elements.artboard import Frame, VNArtboard, VNLayer
 from ..elements.base import VNBaseElement, VNTransform
-from ..elements.guide import VNGuideElement
 from ..elements.group import VNGroupElement
+from ..elements.guide import VNGuideElement
 from ..elements.image import VNImageElement
 from ..elements.path import VNPathElement, pathGeometry
+from ..elements.styles import (
+    VNColor,
+    VNGradient,
+    basicStrokeStyle,
+    pathStrokeStyle,
+    styledElementData,
+)
 from ..elements.text import VNTextElement, singleStyledText, textProperty
-from ..elements.styles import VNColor, VNGradient, pathStrokeStyle, basicStrokeStyle
 
 
-def get_json_element(json_data: Dict, list_key: str, index: int) -> Optional[Dict]:
+class CurveDecoder:
     """
-    Retrieve an attribute according to key and index from gid_json.
+    inkvn CurveDecoder
 
-    Linearity Curve makes use of IDs and lists of elements.
-    This function makes it easier to get Curve elements.
+    converts both Vectornator JSON and Linearity Curve JSON data to classes.
     """
 
-    elements = json_data.get(list_key)
+    def __init__(self, archive: Any, gid_json: Dict, is_curve: bool) -> None:
+        self.archive = archive
+        self.gid_json = gid_json
+        self.is_curve = is_curve
+        self.artboard = self.read_artboard()
 
-    if elements is None:  # return None if the top-level key doesn't exist.
-        return None
+    def get_child(
+        self, elem: Dict, key: str, is_curve: bool = False
+    ) -> Union[Any, Dict, List[Dict], None]:
+        """
+        Retrieve a child attribute according to a key.
 
-    return elements[index]
+        Linearity Curve makes use of IDs and lists of elements.
+        This function makes it easier to get Curve elements.
+        """
 
+        def _traverse_ids(
+            ids: Any, element_list: Optional[List]
+        ) -> Union[List, Any, None]:
+            """pick elements specified by `ids` from `element_list`."""
+            if not element_list:
+                return None
+            if isinstance(ids, list):
+                return [element_list[i] for i in ids]
+            elif isinstance(ids, int):
+                return element_list[ids]
+            return None
 
-def read_artboard(archive: Any, gid_json: Dict) -> VNArtboard:
-    """
-    Reads gid.json(artboard) and returns artboard class.
+        def _find_key_in_dict(
+            source: Dict, key_candidates: Union[str, List[str]]
+        ) -> List[Any]:
+            """
+            find the list of elements from `source` dictionary,
+            using multiple keys as query.
+            """
+            # using multiple keys as query
+            if isinstance(key_candidates, list):
+                for k in key_candidates:
+                    if k in source:
+                        return source[k]
 
-    Argument `archive` is needed for image embedding.
-    """
-    # Layers
-    # "layer_ids" contain layer indexes, while "layers" contain existing layers
-    artboard = gid_json["artboards"][0]
-    layer_ids = artboard["layerIds"]
-    existing_layers = gid_json["layers"]
-    layer_list: List[VNLayer] = []
-    for layer_id in layer_ids:
-        layer = get_json_element(gid_json, "layers", layer_id)
-        if layer is not None:
-            layer_list.append(read_layer(archive, gid_json, layer))
+            # using single key as query
+            elif isinstance(key_candidates, str) and key_candidates in source:
+                return source[key_candidates]
 
-    # Guides
-    # the very last layer has the guide
-    guide_layer = existing_layers[len(layer_list)]
-    guide_ids = guide_layer["elementIds"]
-    guide_list: List[VNBaseElement] = []
-    for guide_id in guide_ids:
-        guide = get_json_element(gid_json, "elements", guide_id)
-        if guide is not None:
-            guide_element = read_element(archive, gid_json, guide)
-            if isinstance(guide_element, VNGuideElement):
-                guide_list.append(guide_element)
+            return []
 
-    # Background Color
-    fill_color = None
-    fill_gradient = None
-    fill_id = artboard.get("fillId")
-    if fill_id is not None:
-        fill_result = read_fill(gid_json, artboard, fill_id)
+        try:
+            # Case 1: Vectornator direct
+            if not is_curve and key in elem:
+                return elem[key]
+
+            # Case 2: mapping
+            mapping = CURVE_MAPPING.get(key)
+            if mapping:
+                # element_list contains a list of element(like `localTransforms`)
+                id = elem.get(mapping.id)
+                element_list = _find_key_in_dict(self.gid_json, mapping.list)
+                result = _traverse_ids(id, element_list)
+                if result is not None:
+                    return result
+
+            # Case 3: subElement, same key
+            sub_vn = None
+            if isinstance(elem.get("subElement"), dict):
+                sub_vn = elem.get("subElement", {}).get(key, {}).get("_0")
+
+            # ! Linearity Curve 5.1.2, singleStyle (the exception)
+            elif key == "abstractPath" and isinstance(elem.get("subElement"), int):
+                sub_vn = elem.get("subElement")
+
+            if sub_vn is not None:
+                if not is_curve:
+                    return sub_vn
+                # assume sub == ids
+                result = _traverse_ids(sub_vn, element_list)
+                if result is not None:
+                    return result
+
+            # Case 3-1: subElement, Curve key
+            elif mapping is not None and isinstance(elem.get("subElement"), dict):
+                sub_c = elem.get("subElement", {}).get(mapping.id, {}).get("_0")
+                result = _traverse_ids(sub_c, element_list)
+                if result is not None:
+                    return result
+
+            return None
+
+        except Exception as e:
+            inkex.errormsg(f"Couldn't read the child element: {e}")
+            return None
+
+    def get_child_from_id(self, list_key: str, index: int) -> Optional[Dict]:
+        """Retrieve an attribute according to key and index from gid_json."""
+
+        elements = self.gid_json.get(list_key)
+
+        if elements is None:  # return None if the top-level key doesn't exist.
+            return None
+
+        return elements[index]
+
+    def read_artboard(self) -> VNArtboard:
+        """
+        Reads gid.json(artboard) and returns artboard class.
+        """
+        # Layers
+        artboard = self.gid_json["artboards"][0]
+        layers = self.get_child(artboard, "layers", True)
+        layer_list: List[VNLayer] = []
+        if layers is not None:
+            for layer in layers:
+                layer_list.append(self.read_layer(layer))
+
+        # Guides
+        guide_layer = self.get_child(artboard, "guideLayer", True)
+        guide_list: List[VNBaseElement] = []
+        if isinstance(guide_layer, dict):
+            guides = self.read_layer(guide_layer)
+            for guide_element in guides.elements:
+                if isinstance(guide_element, (VNGuideElement, VNGroupElement)):
+                    guide_list.append(guide_element)
+
+        # Background Color
+        fill_color = None
+        fill_gradient = None
+        fill_result = self.read_fill(artboard)
         if isinstance(fill_result, VNGradient):
             fill_gradient = fill_result
         elif isinstance(fill_result, VNColor):
             fill_color = fill_result
 
-    return VNArtboard(
-        title=artboard["title"],
-        frame=Frame(**artboard["frame"]),
-        layers=layer_list,
-        guides=guide_list,
-        fillColor=fill_color,
-        fillGradient=fill_gradient,
-    )
+        return VNArtboard(
+            title=artboard["title"],
+            frame=Frame(**artboard["frame"]),
+            layers=layer_list,
+            guides=guide_list,
+            fillColor=fill_color,
+            fillGradient=fill_gradient,
+        )
 
+    def read_layer(self, layer: Dict) -> VNLayer:
+        """
+        Read specified layer and return their attributes as class.
 
-def read_layer(archive: Any, gid_json: Dict, layer: Dict) -> VNLayer:
-    """
-    Read specified layer and return their attributes as class.
+        gid_json is used for finding elements inside the layer.
+        """
+        elements = self.get_child(layer, "elements", True)
+        element_list: List[VNBaseElement] = []
+        if elements is not None:
+            for element in elements:
+                if element is not None:
+                    element_list.append(self.read_element(element))
 
-    gid_json is used for finding elements inside the layer.
-    """
-    layer_element_ids = layer["elementIds"]
-    element_list: List[VNBaseElement] = []
-    for element_id in layer_element_ids:
-        element = get_json_element(gid_json, "elements", element_id)
-        if element is not None:
-            element_list.append(read_element(archive, gid_json, element))
+        return VNLayer(
+            name=layer.get("name", "Unnamed Layer"),
+            opacity=layer.get("opacity", 1.0),
+            isVisible=layer.get("isVisible", True),
+            isLocked=layer.get("isLocked", False),
+            isExpanded=layer.get("isExpanded", False),
+            elements=element_list,
+        )
 
-    return VNLayer(
-        name=layer.get("name", "Unnamed Layer"),
-        opacity=layer.get("opacity", 1.0),
-        isVisible=layer.get("isVisible", True),
-        isLocked=layer.get("isLocked", False),
-        isExpanded=layer.get("isExpanded", False),
-        elements=element_list,
-    )
+    def read_element(self, element: Dict) -> VNBaseElement:
+        """Traverse specified element and extract their attributes."""
+        base_element_data = {
+            "name": element.get("name", "Unnamed Element"),
+            "blur": element.get("blur", 0.0),
+            "opacity": element.get("opacity", 1.0),
+            "blendMode": element.get("blendMode", 0),
+            "isHidden": element.get("isHidden", False),
+            "isLocked": element.get("isLocked", False),
+            "localTransform": None,
+        }
 
-
-def read_element(archive: Any, gid_json: Dict, element: Dict) -> VNBaseElement:
-    """Traverse specified element and extract their attributes."""
-    base_element_data = {
-        "name": element.get("name", "Unnamed Element"),
-        "blur": element.get("blur", 0.0),
-        "opacity": element.get("opacity", 1.0),
-        "blendMode": element.get("blendMode", 0),
-        "isHidden": element.get("isHidden", False),
-        "isLocked": element.get("isLocked", False),
-        "localTransform": None,
-    }
-
-    try:
-        # localTransform (BaseElement)
-        local_transform_id = element["localTransformId"]
-        if local_transform_id is not None:
-            local_transform = get_json_element(
-                gid_json, "localTransforms", local_transform_id
-            )
-            if local_transform is not None:
+        try:
+            # localTransform (BaseElement)
+            local_transform = self.get_child(element, "localTransform", True)
+            if isinstance(local_transform, dict):
                 base_element_data["localTransform"] = VNTransform(**local_transform)
 
-        # Guide (GuideElement)
-        guide_id = element.get("subElement", {}).get("guideLine", {}).get("_0")
-        if guide_id is not None:
-            guide = get_json_element(gid_json, "guideLines", guide_id)
-            if guide is not None:
+            # Guide (GuideElement)
+            guide = self.get_child(element, "guideLine", True)
+            if isinstance(guide, dict):
                 return VNGuideElement(**guide, **base_element_data)
 
-        # Group (GroupElement)
-        group_id = element.get("subElement", {}).get("group", {}).get("_0")
-        if group_id is not None:
-            return read_group(archive, gid_json, group_id, base_element_data)
+            # Group (GroupElement)
+            group = self.get_child(element, "group", True)
+            if isinstance(group, dict):
+                return self.read_group(group, base_element_data)
 
-        # Image (ImageElement)
-        image_id = element.get("subElement", {}).get("image", {}).get("_0")
-        if image_id is not None:
-            return read_image(archive, gid_json, image_id, base_element_data)
+            # Image (ImageElement)
+            image = self.get_child(element, "image", True)
+            if isinstance(image, dict):
+                return self.read_image(image, base_element_data)
 
-        # abstractImage in Curve 5.13.0, format 40
-        abs_image_id = element.get("subElement", {}).get("abstractImage", {}).get("_0")
-        if abs_image_id is not None:
-            return read_image(archive, gid_json, abs_image_id, base_element_data)
+            # abstractImage in Curve 5.13.0, format 40
+            abs_image = self.get_child(element, "abstractImage", True)
+            if isinstance(abs_image, dict):
+                return self.read_image(abs_image, base_element_data)
 
-        # Stylable (either PathElement or TextElement)
-        stylable_id = element.get("subElement", {}).get("stylable", {}).get("_0")
-        if stylable_id is not None:
-            stylable = get_json_element(gid_json, "stylables", stylable_id)
-
-            if stylable is not None:
+            # Stylable (either PathElement or TextElement)
+            stylable = self.get_child(element, "stylable", True)
+            if isinstance(stylable, dict):
                 # clipping mask
                 mask = bool(stylable.get("mask", 0))
 
-                # will be used to return PathElement
-                fill_id = None
-                stroke_style_id = None
-                abstract_path_id = None
+                # Stroke Style for older Curve
+                stroke_style = self.read_stroke(stylable)
+
+                # `fill` for older Curve
+                # New Curve has fill/stroke inside abstractPath)
+                fill_color = None
+                fill_gradient = None
+                abstract_path = None
 
                 # singleStyles (based on Curve 5.1.2)
-                single_style_id = (
-                    stylable.get("subElement", {}).get("singleStyle", {}).get("_0")
-                )
-                if single_style_id is not None:
-                    single_style = get_json_element(
-                        gid_json, "singleStyles", single_style_id
-                    )
-                    if single_style is not None:
-                        # old abstractPath lacks these ids below
-                        abstract_path_id = single_style.get("subElement")
-                        stroke_style_id = stylable.get("strokeStyleId")
-                        fill_id = single_style.get("fillId")
+                single_style = self.get_child(stylable, "singleStyle", True)
+
+                if isinstance(single_style, dict):
+                    fill_result = self.read_fill(stylable, single_style)
+                    if isinstance(fill_result, VNGradient):
+                        fill_gradient = fill_result
+                    elif isinstance(fill_result, VNColor):
+                        fill_color = fill_result
+
+                    # get abstract path from single_style
+                    abstract_path = self.get_child(single_style, "abstractPath", True)
 
                 # Abstract Path (PathElement)
-                sub_element = stylable.get("subElement", {})
-                if "abstractPath" in sub_element:
-                    abstract_path_id = sub_element["abstractPath"].get("_0")
-                if abstract_path_id is not None:
-                    path_element_data = {
-                        "abs_path": abstract_path_id,
-                        "stylable": stylable,
-                        "mask": mask,
-                        "stroke": stroke_style_id,
-                        "fill": fill_id,
-                    }
-                    return read_abs_path(gid_json, path_element_data, base_element_data)
+                if abstract_path is None:
+                    abstract_path = self.get_child(stylable, "abstractPath", True)
+
+                if isinstance(abstract_path, dict):
+                    path_element_data = styledElementData(
+                        styled_data=abstract_path,
+                        mask=mask,
+                        stroke=stroke_style,
+                        color=fill_color,
+                        grad=fill_gradient,
+                    )
+
+                    return self.read_abs_path(path_element_data, base_element_data)
 
                 # Abstract Text (TextElement)
-                abstract_text_id = (
-                    stylable.get("subElement", {}).get("abstractText", {}).get("_0")
-                )
-                if abstract_text_id is not None:
-                    return read_abs_text(gid_json, abstract_text_id, base_element_data)
+                abstract_text = self.get_child(stylable, "abstractText", True)
+                if isinstance(abstract_text, dict):
+                    return self.read_abs_text(abstract_text, base_element_data)
 
-        # if the element is unknown type:
-        raise NotImplementedError(
-            f"{base_element_data['name']}: This element has unknown type."
-        )
+            # if the element is unknown type:
+            raise NotImplementedError(
+                f"{base_element_data['name']}: This element has unknown type."
+            )
 
-    except Exception as e:
-        inkex.errormsg(f"Error reading element: {e}")
-        return VNBaseElement(**base_element_data)
+        except Exception as e:
+            inkex.errormsg(f"Error reading element: {e}")
+            return VNBaseElement(**base_element_data)
 
-
-def read_group(
-    archive: Any, gid_json: Dict, group_id: int, base_element: Dict
-) -> Union[VNGroupElement, VNBaseElement]:
-    """Reads elements inside group and returns as VNGroupElement."""
-    # get elements inside group
-    group = get_json_element(gid_json, "groups", group_id)
-    if group is not None:
-        group_element_ids = group["elementIds"]
+    def read_group(
+        self, group: Dict, base_element: Dict
+    ) -> Union[VNGroupElement, VNBaseElement]:
+        """Reads elements inside group and returns as VNGroupElement."""
+        # get elements inside group
+        group_elements = self.get_child(group, "elements", True)
         group_element_list: List[VNBaseElement] = []
 
-        for group_element_id in group_element_ids:
-            group_element = get_json_element(gid_json, "elements", group_element_id)
-            if group_element is not None:
-                # get group elements recursively
-                group_element_list.append(
-                    read_element(archive, gid_json, group_element)
-                )
+        if group_elements is not None:
+            for group_element in group_elements:
+                if group_element is not None:
+                    # get group elements recursively
+                    group_element_list.append(self.read_element(group_element))
 
-        return VNGroupElement(groupElements=group_element_list, **base_element)
-    else:
-        return VNBaseElement(**base_element)
+            return VNGroupElement(groupElements=group_element_list, **base_element)
+        else:
+            return VNBaseElement(**base_element)
 
+    def read_image(
+        self, image: Dict, base_element: Dict
+    ) -> Union[VNImageElement, VNBaseElement]:
+        """Reads image element, encodes image in Base64 and returns VNImageElement."""
 
-def read_image(
-    archive: Any, gid_json: Dict, image_id: int, base_element: Dict
-) -> Union[VNImageElement, VNBaseElement]:
-    """Reads image element, encodes image in Base64 and returns VNImageElement."""
-    # relativePath contains *.dat (bitmap data)
-    # sharedFileImage doesn't exist in 5.1.1 (file version 21) document
-    # Curve 5.13.0, format 40 uses abstractImage
-    # TODO format 40 support lags behind other versions(14, 19, 44)
-    image_data_id = None
-    transform = None
-    crop_rect = None
-    encoded_image = ""
-
-    image = get_json_element(gid_json, "images", image_id)
-    abs_image = get_json_element(gid_json, "abstractImages", image_id)
-
-    if image is not None:
-        if image.get("imageData") is not None:
-            image_data_id = (
-                image.get("imageData", {}).get("sharedFileImage", {}).get("_0")
-            )
-            # cropping
+        def _crop_rect() -> Optional[Tuple[Tuple[float, float], Tuple[float, float]]]:
             crop_rect = image.get("cropRect")
             if crop_rect is not None:
                 assert isinstance(crop_rect, list) and len(crop_rect) == 2, (
                     f"{base_element.get('name', 'Unnamed Element')}: Invalid crop_rect."
                 )
-                crop_rect = tuple(map(tuple, crop_rect))
-        else:  # legacy image
-            image_data_id = image.get("imageDataId")
+                return (
+                    (float(crop_rect[0][0]), float(crop_rect[0][1])),
+                    (float(crop_rect[1][0]), float(crop_rect[1][1])),
+                )
+            else:
+                return None
+
+        # relativePath contains *.dat (bitmap data)
+        # sharedFileImage doesn't exist in 5.1.1 (file version 21) document
+        # Curve 5.13.0, format 40 uses abstractImage
+        # TODO format 40 crop rect is not working as expected
+        image_data_id = None
+        transform = None
+        crop_rect = None
+        encoded_image = ""
+
+        new_image_id = image.get("imageData", {}).get("sharedFileImage", {}).get("_0")
+        abs_image_id = image.get("subElement", {}).get("image", {}).get("_0")
+        legacy_image_id = image.get("imageDataId")
+
+        if new_image_id is not None:
+            image_data_id = new_image_id
+            crop_rect = _crop_rect()
+        elif abs_image_id is not None:
+            image_data_id = abs_image_id
             transform = image.get("transform")
+            crop_rect = _crop_rect()
+        elif legacy_image_id is not None:
+            image_data_id = legacy_image_id
+            transform = image.get("transform")
+            crop_rect = _crop_rect()
 
-    elif abs_image is not None:
-        image_data_id = abs_image.get("subElement", {}).get("image", {}).get("_0")
-        transform = abs_image.get("transform")
-
-        # cropping
-        crop_rect = abs_image.get("cropRect")
-        if crop_rect is not None:
-            assert isinstance(crop_rect, list) and len(crop_rect) == 2, (
-                f"{base_element.get('name', 'Unnamed Element')}: Invalid crop_rect."
+        if isinstance(image_data_id, int):
+            image_data = self.get_child_from_id("imageDatas", image_data_id)
+            if image_data is not None:
+                image_file = image_data["relativePath"]
+                encoded_image = ext.read_dat_from_zip(self.archive, image_file)
+            return VNImageElement(
+                imageData=encoded_image,
+                transform=transform,
+                cropRect=crop_rect,
+                **base_element,
             )
-            crop_rect = tuple(map(tuple, crop_rect))
+        else:
+            return VNBaseElement(**base_element)
 
-    if isinstance(image_data_id, int):
-        image_data = get_json_element(gid_json, "imageDatas", image_data_id)
-        if image_data is not None:
-            image_file = image_data["relativePath"]
-            encoded_image = ext.read_dat_from_zip(archive, image_file)
-        return VNImageElement(
-            imageData=encoded_image,
-            transform=transform,
-            cropRect=crop_rect,
-            **base_element,
-        )
-    else:
-        return VNBaseElement(**base_element)
+    def read_abs_path(
+        self, path_element: styledElementData, base_element: Dict
+    ) -> Union[VNPathElement, VNBaseElement]:
+        """Reads path element and returns VNPathElement."""
 
+        def _add_path(path_data: Dict, path_geometry_list: List[pathGeometry]) -> None:
+            """appends path data to list"""
+            geometry = self.get_child(path_data, "geometry", True)
+            # Vectornator AbstractPath (direct)
+            if path_data.get("nodes") is not None:
+                path_geometry_list.append(
+                    pathGeometry(closed=path_data["closed"], nodes=path_data["nodes"])
+                )
+            # SingleStyle (below geometry) and newer abstractPath
+            elif isinstance(geometry, dict):
+                path_geometry_list.append(
+                    pathGeometry(closed=geometry["closed"], nodes=geometry["nodes"])
+                )
 
-def read_abs_path(
-    gid_json: Dict, path_element: Dict, base_element: Dict
-) -> Union[VNPathElement, VNBaseElement]:
-    """Reads path element and returns VNPathElement."""
-    abstract_path = get_json_element(
-        gid_json, "abstractPaths", path_element["abs_path"]
-    )
-    stroke_id = path_element["stroke"]
-    fill_id = path_element["fill"]
-    fill_color = None
-    fill_gradient = None
-    stroke_style = None
+        if path_element.styled_data is not None:
+            # Stroke Style
+            if path_element.stroke is None:
+                path_element.stroke = self.read_stroke(path_element.styled_data)
 
-    if abstract_path is not None:
-        # Stroke Style
-        if "strokeStyleId" in abstract_path:
-            stroke_id = abstract_path["strokeStyleId"]
-        if stroke_id is not None:
-            stroke_style = read_stroke(gid_json, stroke_id)
+            # fill
+            if path_element.color is None and path_element.grad is None:
+                fill_result = self.read_fill(path_element.styled_data)
+                if isinstance(fill_result, VNGradient):
+                    path_element.grad = fill_result
+                elif isinstance(fill_result, VNColor):
+                    path_element.color = fill_result
 
-        # fill
-        if "fillId" in abstract_path:
-            fill_id = abstract_path["fillId"]
-        if fill_id is not None:
-            fill_result = read_fill(gid_json, path_element["stylable"], fill_id)
-            if isinstance(fill_result, VNGradient):
-                fill_gradient = fill_result
-            elif isinstance(fill_result, VNColor):
-                fill_color = fill_result
-
-        # Path
-        path_id = abstract_path.get("subElement", {}).get("path", {}).get("_0")
-        path_geometry_list: List[pathGeometry] = []
-        if path_id is not None:
-            path = get_json_element(gid_json, "paths", path_id)
-            if path is not None:
+            # Path
+            path_data = self.get_child(path_element.styled_data, "pathData", True)
+            path_geometry_list: List[pathGeometry] = []
+            if isinstance(path_data, dict):
                 # Path Geometry
-                geometry_id = path.get("geometryId")
-                if geometry_id is not None:
-                    path_geometry = get_json_element(
-                        gid_json, "pathGeometries", geometry_id
+                text_path = (
+                    path_data.get("subElement", {}).get("textPath", {}).get("_0")
+                )
+                if text_path is not None:
+                    inkex.utils.debug(
+                        f"{base_element['name']}: textOnPath is not supported."
                     )
-                    if path_geometry is not None:
-                        path_geometry_list.append(pathGeometry(**path_geometry))
+                _add_path(path_data, path_geometry_list)
 
-        # compoundPath
-        compound_path_id = (
-            abstract_path.get("subElement", {}).get("compoundPath", {}).get("_0")
-        )
-        if compound_path_id is not None:
-            compound_path = get_json_element(
-                gid_json, "compoundPaths", compound_path_id
+            # compoundPath
+            compound_path_data = self.get_child(
+                path_element.styled_data, "compoundPathData", True
             )
-            if compound_path is not None:
+            if isinstance(compound_path_data, dict):
                 # Path Geometries (subpath)
-                subpath_ids = compound_path.get("subpathIds")
-                if subpath_ids is not None:
-                    for id in subpath_ids:
-                        path_geometry = get_json_element(gid_json, "pathGeometries", id)
-                        if path_geometry is not None:
-                            path_geometry_list.append(pathGeometry(**path_geometry))
+                subpaths = self.get_child(compound_path_data, "subpaths", True)
+                if subpaths is not None:
+                    for sub_element in subpaths:
+                        _add_path(sub_element, path_geometry_list)
 
-        return VNPathElement(
-            mask=path_element["mask"],
-            fillColor=fill_color,
-            fillGradient=fill_gradient,
-            strokeStyle=stroke_style,
-            pathGeometries=path_geometry_list,
-            **base_element,
-        )
-    else:
-        return VNBaseElement(**base_element)
+            return VNPathElement(
+                mask=path_element.mask,
+                fillColor=path_element.color,
+                fillGradient=path_element.grad,
+                strokeStyle=path_element.stroke,
+                pathGeometries=path_geometry_list,
+                **base_element,
+            )
+        else:
+            return VNBaseElement(**base_element)
 
+    def read_abs_text(
+        self, abstract_text: Dict, base_element: Dict
+    ) -> Union[VNTextElement, VNBaseElement]:
+        """
+        Reads Curve text element and returns VNTextElement.
+        """
+        # TODO Improve Text support, new format
 
-def read_abs_text(
-    gid_json: Dict, abstract_text_id: int, base_element: Dict
-) -> Union[VNTextElement, VNBaseElement]:
-    """
-    Reads Curve text element and returns VNTextElement.
-    """
-    # TODO Improve Text support, new format
-    abstract_text = get_json_element(gid_json, "abstractTexts", abstract_text_id)
-    # check if the text is new format
-    if abstract_text is not None and abstract_text.get("attributedText") is None:
-        # Which one is which?
-        styled_text_id = abstract_text.get("textId")
-        text_id = abstract_text.get("subElement", {}).get("text", {}).get("_0")
-        stroke_style_id = abstract_text.get("strokeStyleId")
-
-        # will be used to return TextElement
+        string = ""
+        styled_text_list = []
         text_property = None
         styled_text = None
 
-        # textPath
-        text_path_id = abstract_text.get("subElement", {}).get("textPath", {}).get("_0")
-        if text_path_id is not None:
-            inkex.utils.debug(f"{base_element['name']}: textOnPath is not supported.")
+        if abstract_text is not None and abstract_text.get("attributedText") is None:
+            # Which one(styledText or text) is which?
+            text_prop_dict = self.get_child(abstract_text, "text", True)
+            styled_text = self.get_child(abstract_text, "styledText", True)
+            stroke_style_dict = self.get_child(abstract_text, "textStrokeStyle", True)
 
-        # texts(layout??), will be named textProperty internally
-        if text_id is not None:
-            text_prop_dict = get_json_element(gid_json, "texts", text_id)
-            if text_prop_dict is not None:
+            # textPath
+            text_path = self.get_child(abstract_text, "textPath", True)
+            if text_path is not None:
+                inkex.utils.debug(
+                    f"{base_element['name']}: textOnPath is not supported."
+                )
+
+            # texts(layout??), will be named textProperty internally
+            if isinstance(text_prop_dict, dict):
                 text_property = textProperty(
                     textFrameLimits=text_prop_dict.get("textFrameLimits"),
                     textFramePivot=text_prop_dict.get("textFramePivot"),
                 )
 
-        # text stroke_style only contains basicStrokeStyle
-        if stroke_style_id is not None:
-            stroke_style_data = get_json_element(
-                gid_json, "textStrokeStyles", stroke_style_id
-            )
-            if stroke_style_data is not None:
-                stroke_style = basicStrokeStyle(**stroke_style_data)
+            # text stroke_style only contains basicStrokeStyle
+            if isinstance(stroke_style_dict, dict):
+                stroke_style = basicStrokeStyle(**stroke_style_dict)
 
-        # styledTexts
-        if styled_text_id is not None:
-            styled_text = get_json_element(gid_json, "styledTexts", styled_text_id)
-            if styled_text is not None:
+            # styledTexts
+            if isinstance(styled_text, dict):
                 string = styled_text["string"]
                 styles = t.decode_new_text(styled_text)
-                styled_text_list = read_styled_text(styles)
+                styled_text_list = self.read_styled_text(styles)
 
-        return VNTextElement(
-            string=string,
-            transform=None,
-            styledText=styled_text_list,
-            textProperty=text_property,
-            **base_element,
-        )
+            return VNTextElement(
+                string=string,
+                transform=None,
+                styledText=styled_text_list,
+                textProperty=text_property,
+                **base_element,
+            )
 
-    # legacy text
-    # TODO implement Legacy Text decoder
-    elif abstract_text is not None:
-        # will be used to return TextElement
-        transform = None
-        text_property = None
-        styled_text = None
+        # legacy text
+        elif abstract_text is not None:
+            transform = None
+            text_prop_dict = self.get_child(abstract_text, "text", True)
 
-        # I cannot replicate textProperty in legacy format
-        text_id = abstract_text.get("subElement", {}).get("text", {}).get("_0")
-        if text_id is not None:
-            text_prop_dict = get_json_element(gid_json, "texts", text_id)
-            if text_prop_dict is not None:
+            # I cannot replicate textProperty in legacy format
+            if isinstance(text_prop_dict, dict):
                 transform = text_prop_dict.get("transform")  # matrix
                 # resize_mode = text_property.get("resizeMode")
                 # height = text_property.get("height")
                 # width = text_property.get("width")
 
-        # styledText
-        styled_text = NSKeyedUnarchiver(
-            base64.b64decode(abstract_text["attributedText"])
-        )
-        string = styled_text["NSString"]
-        styles = t.decode_old_text(styled_text)
-        styled_text_list = read_styled_text(styles)
-
-        return VNTextElement(
-            string=string,
-            transform=transform,
-            styledText=styled_text_list,
-            textProperty=text_property,  # TODO no text property
-            **base_element,
-        )
-    else:
-        return VNBaseElement(**base_element)
-
-
-def read_styled_text(styles: List[Dict]) -> List[singleStyledText]:
-    styled_text_list: List[singleStyledText] = []
-    for style in styles:
-        color = None
-        # color
-        if style.get("fillColor") is not None:
-            color = VNColor(style["fillColor"])
-        # stroke # TODO text strokestyle(fix reader/text.py)
-        # if style.get("strokeStyle") is not None:
-        #    stroke = style["strokeStyle"]
-        #    stroke = pathStrokeStyle(stroke_style, stroke)
-
-        styled_text = singleStyledText(
-            length=style["length"],
-            fontName=style["fontName"],
-            fontSize=style["fontSize"],
-            alignment=style["alignment"],
-            kerning=style.get("kerning", 0.0),
-            lineHeight=style.get("lineHeight"),
-            fillColor=color,
-            fillGradient=None,  # TODO gradient applies globally
-            strokeStyle=None,
-            strikethrough=style.get("strikethrough", False),
-            underline=style.get("underline", False),
-        )
-        styled_text_list.append(styled_text)
-
-    return styled_text_list
-
-
-def read_stroke(gid_json: Dict, stroke_id: int) -> Optional[pathStrokeStyle]:
-    """Reads stroke style and returns as class."""
-    stroke_style = get_json_element(gid_json, "pathStrokeStyles", stroke_id)
-
-    if stroke_style is None:  # Try legacy "strokeStyles" if not found
-        stroke_style = get_json_element(gid_json, "strokeStyles", stroke_id)
-
-    if stroke_style is not None:
-        if (
-            "dashPattern" in stroke_style
-            and "join" in stroke_style
-            and "cap" in stroke_style
-        ):
-            stroke_style["basicStrokeStyle"] = {
-                "cap": stroke_style["cap"],
-                "dashPattern": stroke_style["dashPattern"],
-                "join": stroke_style["join"],
-                "position": stroke_style["position"],
-            }
-        return pathStrokeStyle(
-            basicStrokeStyle=basicStrokeStyle(**stroke_style["basicStrokeStyle"]),
-            color=VNColor(color_dict=stroke_style["color"]),
-            width=stroke_style["width"],
-        )
-    else:
-        return None
-
-
-def read_fill(
-    gid_json: Dict, stylable: Dict, fill_id: int
-) -> Union[VNGradient, VNColor, None]:
-    """Reads fill data and returns as class."""
-    fill = get_json_element(gid_json, "fills", fill_id)
-    if fill is not None:
-        color: Dict = fill.get("color", {}).get("_0")
-        gradient: Dict = fill.get("gradient", {}).get("_0")
-
-    if gradient is not None:
-        # Newer Curve
-        if gradient.get("transform") is not None:
-            return VNGradient(
-                fill_transform=gradient["transform"],
-                transform_matrix=None,
-                stops=gradient["gradient"]["stops"],
-                typeRawValue=gradient["gradient"]["typeRawValue"],
+            # styledText
+            styled_text = NSKeyedUnarchiver(
+                base64.b64decode(abstract_text["attributedText"])
             )
-        # Old Curve like 5.1.1
+            string = styled_text["NSString"]
+            styles = t.decode_old_text(styled_text)
+            styled_text_list = self.read_styled_text(styles)
+
+            return VNTextElement(
+                string=string,
+                transform=transform,
+                styledText=styled_text_list,
+                textProperty=text_property,  # TODO no text property
+                **base_element,
+            )
         else:
-            fill_transform_id = stylable.get("fillTransformId")
-            assert fill_transform_id is not None, "Invalid gradient."
+            return VNBaseElement(**base_element)
 
-            fill_transform = get_json_element(
-                gid_json, "fillTransforms", fill_transform_id
-            )
-            assert fill_transform is not None, "Invalid gradient."
+    @staticmethod
+    def read_styled_text(styles: List[Dict]) -> List[singleStyledText]:
+        styled_text_list: List[singleStyledText] = []
+        for style in styles:
+            color = None
+            # color
+            if style.get("fillColor") is not None:
+                color = VNColor(style["fillColor"])
+            # stroke # TODO text strokestyle(fix reader/text.py)
+            # if style.get("strokeStyle") is not None:
+            #    stroke = style["strokeStyle"]
+            #    stroke = pathStrokeStyle(stroke_style, stroke)
 
-            return VNGradient(
-                fill_transform=fill_transform,
-                transform_matrix=fill_transform["transform"],
-                stops=gradient["stops"],
-                typeRawValue=gradient["typeRawValue"],
+            styled_text = singleStyledText(
+                length=style["length"],
+                fontName=style["fontName"],
+                fontSize=style["fontSize"],
+                alignment=style["alignment"],
+                kerning=style.get("kerning", 0.0),
+                lineHeight=style.get("lineHeight"),
+                fillColor=color,
+                fillGradient=None,  # TODO gradient applies globally
+                strokeStyle=None,
+                strikethrough=style.get("strikethrough", False),
+                underline=style.get("underline", False),
             )
-    elif color is not None:
-        return VNColor(color_dict=color)
-    else:
-        return None
+            styled_text_list.append(styled_text)
+
+        return styled_text_list
+
+    def read_stroke(self, stylable: Dict) -> Optional[pathStrokeStyle]:
+        """
+        Reads stroke style and returns as class.
+        for newer Curve, abstractPath will be used as `stylable`.
+        """
+        stroke_style = self.get_child(stylable, "strokeStyle", True)
+        if isinstance(stroke_style, dict):
+            if (
+                "dashPattern" in stroke_style
+                and "join" in stroke_style
+                and "cap" in stroke_style
+            ):
+                stroke_style["basicStrokeStyle"] = {
+                    "cap": stroke_style["cap"],
+                    "dashPattern": stroke_style["dashPattern"],
+                    "join": stroke_style["join"],
+                    "position": stroke_style["position"],
+                }
+            return pathStrokeStyle(
+                basicStrokeStyle=basicStrokeStyle(**stroke_style["basicStrokeStyle"]),
+                color=VNColor(color_dict=stroke_style["color"]),
+                width=stroke_style["width"],
+            )
+        else:
+            return None
+
+    def read_fill(
+        self, stylable: Dict, single_style: Optional[Dict] = None
+    ) -> Union[VNGradient, VNColor, None]:
+        """Reads fill data and returns as class."""
+        # fill
+        fill_data = self.get_child(stylable, "fill", True)
+        color: Optional[Dict] = None
+        gradient: Optional[Dict] = None
+
+        # singleStyles (based on Curve 5.1.2)
+        if single_style is not None:
+            fill_data = self.get_child(single_style, "fill", True)
+
+        if isinstance(fill_data, dict):
+            color = fill_data.get("color", {}).get("_0")
+            gradient = fill_data.get("gradient", {}).get("_0")
+
+        # _process_fills
+        if gradient is not None:
+            # Newer Curve
+            if gradient.get("transform") is not None:
+                return VNGradient(
+                    fill_transform=gradient["transform"],
+                    transform_matrix=None,
+                    stops=gradient["gradient"]["stops"],
+                    typeRawValue=gradient["gradient"]["typeRawValue"],
+                )
+            # Old Curve like 5.1.1
+            else:
+                fill_transform = self.get_child(stylable, "fillTransform", True)
+                assert isinstance(fill_transform, dict), "Invalid gradient."
+
+                return VNGradient(
+                    fill_transform=fill_transform,
+                    transform_matrix=fill_transform["transform"],
+                    stops=gradient["stops"],
+                    typeRawValue=gradient["typeRawValue"],
+                )
+        elif color is not None:
+            return VNColor(color_dict=color)
+        else:
+            return None
