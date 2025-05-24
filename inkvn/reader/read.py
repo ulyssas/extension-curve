@@ -56,7 +56,7 @@ class CurveReader:
                 archive=self.archive,
                 gid_json=gid_json,
                 is_curve=self.check_if_curve(self.app_version),
-                file_version=self.file_version
+                file_version=self.file_version,
             )
             self.artboards.append(decoder.artboard)
 
