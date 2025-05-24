@@ -1,5 +1,5 @@
 """
-inkvn Unified decoder
+inkvn decoder
 
 converts both Vectornator JSON and Linearity Curve JSON data to inkvn.
 This is used for Linearity Curve 5.0.x import as well (which are format 19).
@@ -40,10 +40,13 @@ class CurveDecoder:
     converts both Vectornator JSON and Linearity Curve JSON data to classes.
     """
 
-    def __init__(self, archive: Any, gid_json: Dict, is_curve: bool) -> None:
+    def __init__(
+        self, archive: Any, gid_json: Dict, is_curve: bool, file_version: int
+    ) -> None:
         self.archive = archive
         self.gid_json = gid_json
         self.is_curve = is_curve
+        self.file_version = file_version
         self.artboard = self.read_artboard()
 
     def get_child(
@@ -107,8 +110,12 @@ class CurveDecoder:
             if isinstance(elem.get("subElement"), dict):
                 sub_vn = elem.get("subElement", {}).get(key, {}).get("_0")
 
-            # ! Linearity Curve 5.1.2, singleStyle (the exception)
-            elif key == "abstractPath" and isinstance(elem.get("subElement"), int):
+                # ! singleStyle in Vectornator 4.13.6 (19)
+                if sub_vn is None and self.file_version == 19 and key == "abstractPath":
+                    sub_vn = elem.get("subElement")
+
+            # ! singleStyles in Curve 5.1.2 (21) (the exceptions)
+            elif isinstance(elem.get("subElement"), int) and key == "abstractPath":
                 sub_vn = elem.get("subElement")
 
             if sub_vn is not None:
@@ -147,15 +154,18 @@ class CurveDecoder:
         Reads gid.json(artboard) and returns artboard class.
         """
         # Layers
-        artboard = self.gid_json["artboards"][0]
-        layers = self.get_child(artboard, "layers", True)
+        if self.is_curve:
+            artboard = self.gid_json["artboards"][0]
+        else:
+            artboard = self.gid_json
+        layers = self.get_child(artboard, "layers", self.is_curve)
         layer_list: List[VNLayer] = []
         if layers is not None:
             for layer in layers:
                 layer_list.append(self.read_layer(layer))
 
         # Guides
-        guide_layer = self.get_child(artboard, "guideLayer", True)
+        guide_layer = self.get_child(artboard, "guideLayer", self.is_curve)
         guide_list: List[VNBaseElement] = []
         if isinstance(guide_layer, dict):
             guides = self.read_layer(guide_layer)
@@ -187,19 +197,27 @@ class CurveDecoder:
 
         gid_json is used for finding elements inside the layer.
         """
-        elements = self.get_child(layer, "elements", True)
+        elements = self.get_child(layer, "elements", self.is_curve)
         element_list: List[VNBaseElement] = []
         if elements is not None:
             for element in elements:
                 if element is not None:
                     element_list.append(self.read_element(element))
 
+        # properties (Vectornator)
+        if layer.get("properties") is not None:
+            properties = layer["properties"]
+
+        # properties did not exist in 4.9.0 (7) and Curve.
+        else:
+            properties = layer
+
         return VNLayer(
-            name=layer.get("name", "Unnamed Layer"),
-            opacity=layer.get("opacity", 1.0),
-            isVisible=layer.get("isVisible", True),
-            isLocked=layer.get("isLocked", False),
-            isExpanded=layer.get("isExpanded", False),
+            name=properties.get("name", "Unnamed Layer"),
+            opacity=properties.get("opacity", 1.0),
+            isVisible=properties.get("isVisible", True),
+            isLocked=properties.get("isLocked", False),
+            isExpanded=properties.get("isExpanded", False),
             elements=element_list,
         )
 
@@ -217,22 +235,22 @@ class CurveDecoder:
 
         try:
             # localTransform (BaseElement)
-            local_transform = self.get_child(element, "localTransform", True)
+            local_transform = self.get_child(element, "localTransform", self.is_curve)
             if isinstance(local_transform, dict):
                 base_element_data["localTransform"] = VNTransform(**local_transform)
 
             # Guide (GuideElement)
-            guide = self.get_child(element, "guideLine", True)
+            guide = self.get_child(element, "guideLine", self.is_curve)
             if isinstance(guide, dict):
                 return VNGuideElement(**guide, **base_element_data)
 
             # Group (GroupElement)
-            group = self.get_child(element, "group", True)
+            group = self.get_child(element, "group", self.is_curve)
             if isinstance(group, dict):
                 return self.read_group(group, base_element_data)
 
             # Image (ImageElement)
-            image = self.get_child(element, "image", True)
+            image = self.get_child(element, "image", self.is_curve)
             if isinstance(image, dict):
                 return self.read_image(image, base_element_data)
 
@@ -242,7 +260,7 @@ class CurveDecoder:
                 return self.read_image(abs_image, base_element_data)
 
             # Stylable (either PathElement or TextElement)
-            stylable = self.get_child(element, "stylable", True)
+            stylable = self.get_child(element, "stylable", self.is_curve)
             if isinstance(stylable, dict):
                 # clipping mask
                 mask = bool(stylable.get("mask", 0))
@@ -256,9 +274,15 @@ class CurveDecoder:
                 fill_gradient = None
                 abstract_path = None
 
-                # singleStyles (based on Curve 5.1.2)
-                single_style = self.get_child(stylable, "singleStyle", True)
+                # Vectornator fill
+                fill_result = self.read_fill(stylable)
+                if isinstance(fill_result, VNGradient):
+                    fill_gradient = fill_result
+                elif isinstance(fill_result, VNColor):
+                    fill_color = fill_result
 
+                # singleStyles (Curve 5.1.2 (21) & Vectornator 4.13.6 (19))
+                single_style = self.get_child(stylable, "singleStyle", self.is_curve)
                 if isinstance(single_style, dict):
                     fill_result = self.read_fill(stylable, single_style)
                     if isinstance(fill_result, VNGradient):
@@ -267,11 +291,16 @@ class CurveDecoder:
                         fill_color = fill_result
 
                     # get abstract path from single_style
-                    abstract_path = self.get_child(single_style, "abstractPath", True)
+                    abstract_path = self.get_child(
+                        single_style, "abstractPath", self.is_curve
+                    )
 
                 # Abstract Path (PathElement)
-                if abstract_path is None:
-                    abstract_path = self.get_child(stylable, "abstractPath", True)
+                # format 19 uses singleStyle instead
+                if abstract_path is None and self.file_version != 19:
+                    abstract_path = self.get_child(
+                        stylable, "abstractPath", self.is_curve
+                    )
 
                 if isinstance(abstract_path, dict):
                     path_element_data = styledElementData(
@@ -281,13 +310,19 @@ class CurveDecoder:
                         color=fill_color,
                         grad=fill_gradient,
                     )
-
                     return self.read_abs_path(path_element_data, base_element_data)
 
                 # Abstract Text (TextElement)
-                abstract_text = self.get_child(stylable, "abstractText", True)
-                if isinstance(abstract_text, dict):
-                    return self.read_abs_text(abstract_text, base_element_data)
+                text_data = self.get_child(stylable, "text", self.is_curve)
+                if isinstance(text_data, dict):
+                    text_element_data = styledElementData(
+                        styled_data=text_data,
+                        mask=mask,
+                        stroke=stroke_style,
+                        color=fill_color,
+                        grad=fill_gradient,
+                    )
+                    return self.read_abs_text(text_element_data, base_element_data)
 
             # if the element is unknown type:
             raise NotImplementedError(
@@ -303,7 +338,7 @@ class CurveDecoder:
     ) -> Union[VNGroupElement, VNBaseElement]:
         """Reads elements inside group and returns as VNGroupElement."""
         # get elements inside group
-        group_elements = self.get_child(group, "elements", True)
+        group_elements = self.get_child(group, "elements", self.is_curve)
         group_element_list: List[VNBaseElement] = []
 
         if group_elements is not None:
@@ -339,6 +374,7 @@ class CurveDecoder:
         # Curve 5.13.0, format 40 uses abstractImage
         # TODO format 40 crop rect is not working as expected
         image_data_id = None
+        image_data = None
         transform = None
         crop_rect = None
         encoded_image = ""
@@ -347,23 +383,26 @@ class CurveDecoder:
         abs_image_id = image.get("subElement", {}).get("image", {}).get("_0")
         legacy_image_id = image.get("imageDataId")
 
+        crop_rect = _crop_rect()
+
         if new_image_id is not None:
             image_data_id = new_image_id
-            crop_rect = _crop_rect()
         elif abs_image_id is not None:
             image_data_id = abs_image_id
             transform = image.get("transform")
-            crop_rect = _crop_rect()
         elif legacy_image_id is not None:
             image_data_id = legacy_image_id
             transform = image.get("transform")
-            crop_rect = _crop_rect()
+        else:  # Vectornator Image
+            image_data = image.get("imageData")
+            transform = image.get("transform")
 
         if isinstance(image_data_id, int):
             image_data = self.get_child_from_id("imageDatas", image_data_id)
-            if image_data is not None:
-                image_file = image_data["relativePath"]
-                encoded_image = ext.read_dat_from_zip(self.archive, image_file)
+
+        if image_data is not None:
+            image_file = image_data["relativePath"]
+            encoded_image = ext.read_dat_from_zip(self.archive, image_file)
             return VNImageElement(
                 imageData=encoded_image,
                 transform=transform,
@@ -375,12 +414,12 @@ class CurveDecoder:
 
     def read_abs_path(
         self, path_element: styledElementData, base_element: Dict
-    ) -> Union[VNPathElement, VNBaseElement]:
+    ) -> VNPathElement:
         """Reads path element and returns VNPathElement."""
 
         def _add_path(path_data: Dict, path_geometry_list: List[pathGeometry]) -> None:
             """appends path data to list"""
-            geometry = self.get_child(path_data, "geometry", True)
+            geometry = self.get_child(path_data, "geometry", self.is_curve)
             # Vectornator AbstractPath (direct)
             if path_data.get("nodes") is not None:
                 path_geometry_list.append(
@@ -392,76 +431,91 @@ class CurveDecoder:
                     pathGeometry(closed=geometry["closed"], nodes=geometry["nodes"])
                 )
 
-        if path_element.styled_data is not None:
-            # Stroke Style
-            if path_element.stroke is None:
-                path_element.stroke = self.read_stroke(path_element.styled_data)
+        # Stroke Style
+        if path_element.stroke is None:
+            path_element.stroke = self.read_stroke(path_element.styled_data)
 
-            # fill
-            if path_element.color is None and path_element.grad is None:
-                fill_result = self.read_fill(path_element.styled_data)
-                if isinstance(fill_result, VNGradient):
-                    path_element.grad = fill_result
-                elif isinstance(fill_result, VNColor):
-                    path_element.color = fill_result
+        # fill
+        if path_element.color is None and path_element.grad is None:
+            fill_result = self.read_fill(path_element.styled_data)
+            if isinstance(fill_result, VNGradient):
+                path_element.grad = fill_result
+            elif isinstance(fill_result, VNColor):
+                path_element.color = fill_result
 
-            # Path
-            path_data = self.get_child(path_element.styled_data, "pathData", True)
-            path_geometry_list: List[pathGeometry] = []
-            if isinstance(path_data, dict):
-                # Path Geometry
-                text_path = (
-                    path_data.get("subElement", {}).get("textPath", {}).get("_0")
+        # Path
+        path_data = self.get_child(path_element.styled_data, "pathData", self.is_curve)
+        path_geometry_list: List[pathGeometry] = []
+        if isinstance(path_data, dict):
+            # textPath for Vectornator
+            text_path = path_data.get("subElement", {}).get("textPath", {}).get("_0")
+            if text_path is not None:
+                inkex.utils.debug(
+                    f"{base_element['name']}: textOnPath is not supported."
                 )
-                if text_path is not None:
-                    inkex.utils.debug(
-                        f"{base_element['name']}: textOnPath is not supported."
+
+            # Path Geometry
+            _add_path(path_data, path_geometry_list)
+
+        # compoundPath
+        compound_path_data = self.get_child(
+            path_element.styled_data, "compoundPathData", self.is_curve
+        )
+        if isinstance(compound_path_data, dict):
+            # Path Geometries (subpath)
+            subpaths = self.get_child(compound_path_data, "subpaths", self.is_curve)
+            if subpaths is not None:
+                for sub_element in subpaths:
+                    sub_stylable = (
+                        sub_element.get("subElement", {}).get("stylable", {}).get("_0")
                     )
-                _add_path(path_data, path_geometry_list)
+                    # Vectornator 4.13.5, format 16 and 4.13.4 (14)
+                    if sub_stylable is not None:
+                        sub_path = sub_stylable["subElement"]["abstractPath"]["_0"][
+                            "subElement"
+                        ]["pathData"]["_0"]
 
-            # compoundPath
-            compound_path_data = self.get_child(
-                path_element.styled_data, "compoundPathData", True
-            )
-            if isinstance(compound_path_data, dict):
-                # Path Geometries (subpath)
-                subpaths = self.get_child(compound_path_data, "subpaths", True)
-                if subpaths is not None:
-                    for sub_element in subpaths:
-                        _add_path(sub_element, path_geometry_list)
+                    # else (Vectornator 4.13.6, format 19)
+                    else:
+                        sub_path = sub_element
 
-            return VNPathElement(
-                mask=path_element.mask,
-                fillColor=path_element.color,
-                fillGradient=path_element.grad,
-                strokeStyle=path_element.stroke,
-                pathGeometries=path_geometry_list,
-                **base_element,
-            )
-        else:
-            return VNBaseElement(**base_element)
+                    _add_path(sub_path, path_geometry_list)
+
+        return VNPathElement(
+            mask=path_element.mask,
+            fillColor=path_element.color,
+            fillGradient=path_element.grad,
+            strokeStyle=path_element.stroke,
+            pathGeometries=path_geometry_list,
+            **base_element,
+        )
 
     def read_abs_text(
-        self, abstract_text: Dict, base_element: Dict
+        self, text_element: styledElementData, base_element: Dict
     ) -> Union[VNTextElement, VNBaseElement]:
         """
         Reads Curve text element and returns VNTextElement.
         """
         # TODO Improve Text support, new format
 
+        text_data = text_element.styled_data
+
         string = ""
         styled_text_list = []
         text_property = None
         styled_text = None
 
-        if abstract_text is not None and abstract_text.get("attributedText") is None:
+        if text_data is None:
+            return VNBaseElement(**base_element)
+
+        if text_data.get("attributedText") is None:
             # Which one(styledText or text) is which?
-            text_prop_dict = self.get_child(abstract_text, "text", True)
-            styled_text = self.get_child(abstract_text, "styledText", True)
-            stroke_style_dict = self.get_child(abstract_text, "textStrokeStyle", True)
+            text_prop_dict = self.get_child(text_data, "textProperty", True)
+            styled_text = self.get_child(text_data, "styledText", True)
+            stroke_style_dict = self.get_child(text_data, "textStrokeStyle", True)
 
             # textPath
-            text_path = self.get_child(abstract_text, "textPath", True)
+            text_path = self.get_child(text_data, "textPath", True)
             if text_path is not None:
                 inkex.utils.debug(
                     f"{base_element['name']}: textOnPath is not supported."
@@ -493,11 +547,16 @@ class CurveDecoder:
             )
 
         # legacy text
-        elif abstract_text is not None:
-            transform = None
-            text_prop_dict = self.get_child(abstract_text, "text", True)
+        else:
+            # Vectornator
+            transform = text_data.get("transform")  # matrix
+            # resize_mode = text_data.get("resizeMode")
+            # height = text_data.get("height")
+            # width = text_data.get("width")
+            text_prop_dict = self.get_child(text_data, "textProperty", self.is_curve)
 
             # I cannot replicate textProperty in legacy format
+            # Legacy Curve
             if isinstance(text_prop_dict, dict):
                 transform = text_prop_dict.get("transform")  # matrix
                 # resize_mode = text_property.get("resizeMode")
@@ -506,11 +565,11 @@ class CurveDecoder:
 
             # styledText
             styled_text = NSKeyedUnarchiver(
-                base64.b64decode(abstract_text["attributedText"])
+                base64.b64decode(text_data["attributedText"])
             )
             string = styled_text["NSString"]
             styles = t.decode_old_text(styled_text)
-            styled_text_list = self.read_styled_text(styles)
+            styled_text_list = self.read_styled_text(styles, text_element)
 
             return VNTextElement(
                 string=string,
@@ -519,17 +578,21 @@ class CurveDecoder:
                 textProperty=text_property,  # TODO no text property
                 **base_element,
             )
-        else:
-            return VNBaseElement(**base_element)
 
     @staticmethod
-    def read_styled_text(styles: List[Dict]) -> List[singleStyledText]:
+    def read_styled_text(
+        styles: List[Dict], global_style: Optional[styledElementData] = None
+    ) -> List[singleStyledText]:
         styled_text_list: List[singleStyledText] = []
         for style in styles:
             color = None
             # color
             if style.get("fillColor") is not None:
                 color = VNColor(style["fillColor"])
+            # fallbacks to global style if there's no styles in text data
+            elif global_style is not None and global_style.color is not None:
+                color = global_style.color
+                # stroke = global_style.stroke
             # stroke # TODO text strokestyle(fix reader/text.py)
             # if style.get("strokeStyle") is not None:
             #    stroke = style["strokeStyle"]
@@ -543,7 +606,7 @@ class CurveDecoder:
                 kerning=style.get("kerning", 0.0),
                 lineHeight=style.get("lineHeight"),
                 fillColor=color,
-                fillGradient=None,  # TODO gradient applies globally
+                fillGradient=None,  # TODO gradient must apply globally
                 strokeStyle=None,
                 strikethrough=style.get("strikethrough", False),
                 underline=style.get("underline", False),
@@ -557,7 +620,7 @@ class CurveDecoder:
         Reads stroke style and returns as class.
         for newer Curve, abstractPath will be used as `stylable`.
         """
-        stroke_style = self.get_child(stylable, "strokeStyle", True)
+        stroke_style = self.get_child(stylable, "strokeStyle", self.is_curve)
         if isinstance(stroke_style, dict):
             if (
                 "dashPattern" in stroke_style
@@ -582,41 +645,59 @@ class CurveDecoder:
         self, stylable: Dict, single_style: Optional[Dict] = None
     ) -> Union[VNGradient, VNColor, None]:
         """Reads fill data and returns as class."""
+
+        def _process_fills(
+            gradient: Optional[Dict], color: Optional[Dict]
+        ) -> Union[VNGradient, VNColor, None]:
+            """process fills."""
+            if gradient is not None:
+                # Newer Curve
+                if gradient.get("transform") is not None:
+                    return VNGradient(
+                        fill_transform=gradient["transform"],
+                        transform_matrix=None,
+                        stops=gradient["gradient"]["stops"],
+                        typeRawValue=gradient["gradient"]["typeRawValue"],
+                    )
+                # Old Curve like 5.1.1 or Vectornator
+                else:
+                    fill_transform = self.get_child(
+                        stylable, "fillTransform", self.is_curve
+                    )
+                    assert isinstance(fill_transform, dict), "Invalid gradient."
+                    return VNGradient(
+                        fill_transform=fill_transform,
+                        transform_matrix=fill_transform["transform"],
+                        stops=gradient["stops"],
+                        typeRawValue=gradient["typeRawValue"],
+                    )
+            elif color is not None:
+                return VNColor(color_dict=color)
+            else:
+                return None
+
         # fill
-        fill_data = self.get_child(stylable, "fill", True)
+        fill_data = self.get_child(stylable, "fill", self.is_curve)
+
+        # Vectornator fill
+        fill_color = stylable.get("fillColor")
+        fill_gradient = stylable.get("fillGradient")
+
         color: Optional[Dict] = None
         gradient: Optional[Dict] = None
 
-        # singleStyles (based on Curve 5.1.2)
+        # singleStyles (Curve 5.1.2 (21) & Vectornator 4.13.6 (19))
         if single_style is not None:
-            fill_data = self.get_child(single_style, "fill", True)
+            fill_data = self.get_child(single_style, "fill", self.is_curve)
 
         if isinstance(fill_data, dict):
             color = fill_data.get("color", {}).get("_0")
             gradient = fill_data.get("gradient", {}).get("_0")
+            return _process_fills(gradient, color)
 
-        # _process_fills
-        if gradient is not None:
-            # Newer Curve
-            if gradient.get("transform") is not None:
-                return VNGradient(
-                    fill_transform=gradient["transform"],
-                    transform_matrix=None,
-                    stops=gradient["gradient"]["stops"],
-                    typeRawValue=gradient["gradient"]["typeRawValue"],
-                )
-            # Old Curve like 5.1.1
-            else:
-                fill_transform = self.get_child(stylable, "fillTransform", True)
-                assert isinstance(fill_transform, dict), "Invalid gradient."
+        # Vectornator 4.10.4, format 8
+        elif fill_color is not None or fill_gradient is not None:
+            return _process_fills(fill_gradient, fill_color)
 
-                return VNGradient(
-                    fill_transform=fill_transform,
-                    transform_matrix=fill_transform["transform"],
-                    stops=gradient["stops"],
-                    typeRawValue=gradient["typeRawValue"],
-                )
-        elif color is not None:
-            return VNColor(color_dict=color)
         else:
             return None

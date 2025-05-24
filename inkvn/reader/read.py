@@ -10,7 +10,6 @@ from typing import List
 import inkex
 from packaging import version
 
-import inkvn.reader.decode_vn as dvn
 import inkvn.reader.extract as ext
 from inkvn.reader.decode import CurveDecoder
 
@@ -53,20 +52,13 @@ class CurveReader:
         # Read Artboard (GUID JSON)
         for artboard_path in artboard_paths:
             gid_json = ext.extract_gid_json(self.archive, artboard_path)
-
-            # if the file is Linearity Curve
-            if self.check_if_curve(self.app_version):
-                decoder = CurveDecoder(
-                    archive=self.archive,
-                    gid_json=gid_json,
-                    is_curve=self.check_if_curve(self.app_version),
-                )
-                self.artboards.append(decoder.artboard)
-
-            # if the file is Vectornator
-            else:
-                artboard = dvn.read_vn_artboard(self.archive, gid_json)
-                self.artboards.append(artboard)
+            decoder = CurveDecoder(
+                archive=self.archive,
+                gid_json=gid_json,
+                is_curve=self.check_if_curve(self.app_version),
+                file_version=self.file_version
+            )
+            self.artboards.append(decoder.artboard)
 
     def convert_unit(self):
         """Convert document unit to SVG."""

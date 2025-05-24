@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from typing import Dict, List, Union
 
 """
-styledText actually doesn't exist in Vectornator
+styledText, textProperty is for Newer text format (only present in Curve.)
 because it's for newer text format.
 
 textPaths in Vectornator and Linearity Curve are very different
@@ -47,8 +47,8 @@ CURVE_MAPPING: Dict[str, CurveEntry] = {
     "compoundPathData": CurveEntry(id="compoundPath", list="compoundPaths"),
     "geometry": CurveEntry(id="geometryId", list="pathGeometries"),
     "subpaths": CurveEntry(id="subpathIds", list="pathGeometries"),
-    "abstractText": CurveEntry(id="abstractText", list="abstractTexts"),
-    "text": CurveEntry(id="text", list="texts"),
+    "text": CurveEntry(id="abstractText", list="abstractTexts"),
+    "textProperty": CurveEntry(id="text", list="texts"),
     "textPath": CurveEntry(id="textPath", list="textPaths"),
     "styledText": CurveEntry(id="textId", list="styledTexts"),
     "fill": CurveEntry(id="fillId", list="fills"),
