@@ -357,22 +357,6 @@ class CurveConverter:
 
                     styled = text_element.styledText[styled_index]
 
-                    # skip styledText which contains only "\n"
-                    # ignore this check when offset == 0(start)
-                    if offset != 0:
-                        while (
-                            styled.length == 1
-                            and text_element.string[offset - 1] == "\n"
-                        ):
-                            offset += 1
-                            para_offset += 1
-                            styled_index += 1
-                            # break the loop if there's no remaining styledText
-                            if styled_index >= len(text_element.styledText):
-                                break
-
-                            styled = text_element.styledText[styled_index]
-
                     # set remaining_length
                     if remaining_length <= 0:
                         remaining_length = styled.length
