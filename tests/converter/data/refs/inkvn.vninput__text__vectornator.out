@@ -36,13 +36,13 @@
           <tspan style="font-size:18.0px;letter-spacing:0px;font-family:&quot;Helvetica&quot;;font-weight:bold;font-style:normal;fill:#000000;fill-opacity:1.0;fill-rule:nonzero"> Bold </tspan>
           <tspan style="font-size:18.0px;letter-spacing:0px;font-family:&quot;Helvetica&quot;;font-weight:normal;font-style:oblique;fill:#000000;fill-opacity:1.0;fill-rule:nonzero">Italic</tspan>
           <tspan style="font-size:18.0px;letter-spacing:0px;font-family:&quot;Helvetica&quot;;font-weight:bold;font-style:normal;fill:#000000;fill-opacity:1.0;fill-rule:nonzero"> </tspan>
-          <tspan style="font-size:18.0px;letter-spacing:0px;font-family:&quot;Helvetica&quot;;font-weight:normal;font-style:normal;fill:#000000;fill-opacity:1.0;fill-rule:nonzero">Underline</tspan>
+          <tspan style="font-size:18.0px;letter-spacing:0px;font-family:&quot;Helvetica&quot;;font-weight:normal;font-style:normal;fill:#000000;fill-opacity:1.0;fill-rule:nonzero;text-decoration-line:underline">Underline</tspan>
           <tspan style="font-size:18.0px;letter-spacing:0px;font-family:&quot;Helvetica&quot;;font-weight:bold;font-style:normal;fill:#000000;fill-opacity:1.0;fill-rule:nonzero"> </tspan>
-          <tspan style="font-size:18.0px;letter-spacing:0px;font-family:&quot;Helvetica&quot;;font-weight:normal;font-style:normal;fill:#000000;fill-opacity:1.0;fill-rule:nonzero">Strikethrough</tspan>
+          <tspan style="font-size:18.0px;letter-spacing:0px;font-family:&quot;Helvetica&quot;;font-weight:normal;font-style:normal;fill:#000000;fill-opacity:1.0;fill-rule:nonzero;text-decoration-line:line-through">Strikethrough</tspan>
           <tspan style="font-size:18.0px;letter-spacing:0px;font-family:&quot;Helvetica&quot;;font-weight:normal;font-style:normal;fill:#000000;fill-opacity:1.0;fill-rule:nonzero">  </tspan>
-          <tspan style="font-size:18.0px;letter-spacing:0px;font-family:&quot;Helvetica&quot;;font-weight:bold;font-style:oblique;fill:#000000;fill-opacity:1.0;fill-rule:nonzero">Underline&amp;</tspan>
-          <tspan style="font-size:18.0px;letter-spacing:0px;font-family:&quot;Helvetica&quot;;font-weight:bold;font-style:oblique;fill:#000000;fill-opacity:1.0;fill-rule:nonzero">Stri</tspan>
-          <tspan style="font-size:18.0px;letter-spacing:0px;font-family:&quot;Helvetica&quot;;font-weight:bold;font-style:oblique;fill:#000000;fill-opacity:1.0;fill-rule:nonzero">ke</tspan>
+          <tspan style="font-size:18.0px;letter-spacing:0px;font-family:&quot;Helvetica&quot;;font-weight:bold;font-style:oblique;fill:#000000;fill-opacity:1.0;fill-rule:nonzero;text-decoration-line:underline line-through">Underline&amp;</tspan>
+          <tspan style="font-size:18.0px;letter-spacing:0px;font-family:&quot;Helvetica&quot;;font-weight:bold;font-style:oblique;fill:#000000;fill-opacity:1.0;fill-rule:nonzero;text-decoration-line:underline line-through">Stri</tspan>
+          <tspan style="font-size:18.0px;letter-spacing:0px;font-family:&quot;Helvetica&quot;;font-weight:bold;font-style:oblique;fill:#000000;fill-opacity:1.0;fill-rule:nonzero;text-decoration-line:underline line-through">ke</tspan>
         </tspan>
       </text>
       <text inkscape:label="Kerning" style="opacity:1;mix-blend-mode:normal;display:inline;line-height:1" transform="translate(4.56547, 93.5536)">
@@ -119,17 +119,17 @@
       </text>
       <text inkscape:label="Stroke" style="opacity:1;mix-blend-mode:normal;display:inline;line-height:1" transform="translate(13.322, 275.352)">
         <tspan sodipodi:role="line" x="0" y="0.0px">
-          <tspan style="font-size:40.0px;letter-spacing:0px;font-family:&quot;Helvetica&quot;;font-weight:bold;font-style:normal;fill:none">Stroke</tspan>
+          <tspan style="font-size:40.0px;letter-spacing:0px;font-family:&quot;Helvetica&quot;;font-weight:bold;font-style:normal;fill:none;stroke:#000000;stroke-opacity:1.0;stroke-width:3.0;stroke-linecap:butt;stroke-linejoin:round;stroke-dasharray:0">Stroke</tspan>
         </tspan>
       </text>
       <text inkscape:label="Blurred" style="opacity:1;mix-blend-mode:normal;display:inline;filter:url(#filter5815);line-height:1" transform="translate(160.428, 277.929)">
         <tspan sodipodi:role="line" x="0" y="0.0px">
-          <tspan style="font-size:40.0px;letter-spacing:0px;font-family:&quot;Helvetica&quot;;font-weight:bold;font-style:normal;fill:#FF0000;fill-opacity:1.0;fill-rule:nonzero">Blurred</tspan>
+          <tspan style="font-size:40.0px;letter-spacing:0px;font-family:&quot;Helvetica&quot;;font-weight:bold;font-style:normal;fill:#FF0000;fill-opacity:1.0;fill-rule:nonzero;stroke:#000000;stroke-opacity:0.0;stroke-width:1.0">Blurred</tspan>
         </tspan>
       </text>
       <text inkscape:label="Shadow" style="opacity:1;mix-blend-mode:normal;display:inline;line-height:1" transform="translate(326.455, 277.11)">
         <tspan sodipodi:role="line" x="0" y="0.0px">
-          <tspan style="font-size:40.0px;letter-spacing:0px;font-family:&quot;Helvetica&quot;;font-weight:bold;font-style:normal;fill:#FFFFFF;fill-opacity:1.0;fill-rule:nonzero">Shadow</tspan>
+          <tspan style="font-size:40.0px;letter-spacing:0px;font-family:&quot;Helvetica&quot;;font-weight:bold;font-style:normal;fill:#FFFFFF;fill-opacity:1.0;fill-rule:nonzero;stroke:#000000;stroke-opacity:0.0;stroke-width:1.0">Shadow</tspan>
         </tspan>
       </text>
       <path inkscape:label="(curve)" style="opacity:1;mix-blend-mode:normal;display:inline;stroke:none;fill:#000000;fill-opacity:1;fill-rule:nonzero" d="M 90.4407 350.704 C 90.4407 350.704 125.994 413.245 191.083 405.454 C 256.173 397.663 292.508 338.116 354.328 333.342 C 416.148 328.567 483.412 398.851 483.412 398.851"/>

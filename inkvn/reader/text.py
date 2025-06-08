@@ -4,54 +4,103 @@ VI text tools
 Decodes Linearity Curve styledTexts and turn them into simpler format.
 """
 
-from typing import Dict, List
+import copy
+from typing import Any, Dict, List
 
 from inkex.utils import debug
 
 
 def decode_new_text(styled_text: Dict) -> List[Dict]:
-    """Decodes upperBound system used by Newer text format."""
-    # scanning upperBounds in styledText
+    """Decodes upperBound system used by Newer text format, preserving nested structure."""
+
+    def _collect_upper_bounds(attrib: Dict, upper_bounds: List[int]):
+        """collect all upperBounds inside, without duplication"""
+        values = attrib.get("values")
+        if values:
+            for val in values:
+                ub = val["upperBound"]
+                if ub not in upper_bounds:
+                    upper_bounds.append(ub)
+        else:
+            for v in attrib.values():
+                if isinstance(v, dict):
+                    # recursively collect upperBound
+                    _collect_upper_bounds(v, upper_bounds)
+
+    def _insert_value_by_path(d: Dict, path: List[str], value: Any):
+        """Utility to insert value into nested dictionary via path list."""
+        for key in path[:-1]:
+            # deeper in the dictionary
+            d = d.setdefault(key, {})
+        d[path[-1]] = value
+
+    def _add_styles(
+        attrib: Dict, path: List[str], upper_bounds: List[int], styles: List[Dict]
+    ):
+        """add style and its effective range to list of `styles`"""
+        values = attrib.get("values")
+        if values:
+            for val in values:
+                ub = val["upperBound"]
+                index = upper_bounds.index(ub)
+                _insert_value_by_path(styles[index], path, val["value"])
+
+                if index == 0:
+                    styles[index]["length"] = ub
+                else:
+                    styles[index]["length"] = ub - upper_bounds[index - 1]
+        else:
+            for key, child in attrib.items():
+                if isinstance(child, dict):
+                    _add_styles(child, path + [key], upper_bounds, styles)
+
+    def _propagate_values(styles: List[Dict]):
+        """apply any missing styles with its previous style."""
+        if not styles:
+            return
+
+        propagated_attrs = copy.deepcopy(styles[-1])
+
+        for style in reversed(styles):
+            # top-level
+            for key, value in propagated_attrs.items():
+                if key not in style:
+                    style[key] = copy.deepcopy(value)
+
+            key = "strokeStyle"
+            if (
+                key in style
+                and isinstance(style.get(key), dict)
+                and key in propagated_attrs
+                and isinstance(propagated_attrs.get(key), dict)
+            ):
+                # add missing values (color, width)
+                for sub_key, sub_value in propagated_attrs[key].items():
+                    if sub_key not in style[key]:
+                        style[key][sub_key] = sub_value
+
+            # update propagated_attrs with current
+            for key, value in style.items():
+                if key == "strokeStyle" and isinstance(value, dict):
+                    if not isinstance(propagated_attrs.get(key), dict):
+                        propagated_attrs[key] = {}
+                    propagated_attrs[key].update(value)
+                else:
+                    propagated_attrs[key] = value
+
     upper_bounds: List[int] = []
-    for key in styled_text.keys():
-        # TODO skipped strokeStyle
-        # debug(f"KeyName:{key}")
-        if (
-            isinstance(styled_text[key], dict)
-            and styled_text[key].get("values") is not None
-        ):
-            values = styled_text[key]["values"]
-            for child_value in values:
-                upper_bound = child_value["upperBound"]
-                if upper_bound not in upper_bounds:
-                    upper_bounds.append(upper_bound)
+    for key, val in styled_text.items():
+        if isinstance(val, dict):
+            _collect_upper_bounds(val, upper_bounds)
     upper_bounds.sort()
 
-    # unifying each styles in styledText
-    styles: List[Dict] = [{} for _ in range(len(upper_bounds))]
-    for key in styled_text.keys():
-        if (
-            isinstance(styled_text[key], dict)
-            and styled_text[key].get("values") is not None
-        ):
-            values = styled_text[key]["values"]
-            for child_value in values:
-                upper_bound = child_value["upperBound"]
-                index = upper_bounds.index(upper_bound)
-                styles[index][key] = child_value["value"]
-                if index == 0:
-                    styles[index]["length"] = upper_bound
-                else:
-                    styles[index]["length"] = upper_bound - upper_bounds[index - 1]
+    styles: List[Dict] = [{} for _ in upper_bounds]
 
-    # Propagate last known values forward
-    last_known_values = {}
-    for i in range(len(styles) - 1, -1, -1):
-        for key in styled_text.keys():
-            if key in styles[i]:
-                last_known_values[key] = styles[i][key]
-            elif key in last_known_values:
-                styles[i][key] = last_known_values[key]
+    for key, val in styled_text.items():
+        if isinstance(val, dict):
+            _add_styles(val, [key], upper_bounds, styles)
+
+    _propagate_values(styles)
 
     return styles
 
@@ -59,7 +108,6 @@ def decode_new_text(styled_text: Dict) -> List[Dict]:
 def decode_old_text(unserialized: Dict) -> List[Dict]:
     """Decodes legacy text unpacked by NSKeyUnarchiver."""
     # string has already been processed
-    # debug(f"here:{unserialized}")
     string = unserialized["NSString"]
     lengths = unserialized.get("NSAttributeInfo")
     styles = unserialized["NSAttributes"]
@@ -87,17 +135,32 @@ def decode_old_text(unserialized: Dict) -> List[Dict]:
 
         attribute = styles[attribute_id]
 
+        # strokeStyle without basicStrokeStyle
+        stroke_style = None
+        ns_stroke_color = attribute.get("NSStrokeColor")
+        if ns_stroke_color and isinstance(ns_stroke_color, dict):
+            stroke_style = {
+                "color": {
+                    "rgba": {
+                        "red": ns_stroke_color.get("UIRed", 0.0),
+                        "green": ns_stroke_color.get("UIGreen", 0.0),
+                        "blue": ns_stroke_color.get("UIBlue", 0.0),
+                        "alpha": ns_stroke_color.get("UIAlpha", 1.0),
+                    },
+                },
+                "width": abs(attribute.get("NSStrokeWidth", 1.0)),
+            }
+
         # color
-        # "NSColorSpace": 2 ?
         color_data = None
         ns_color = attribute.get("NSColor")
         if ns_color and isinstance(ns_color, dict):
             color_data = {
                 "rgba": {
-                    "red": ns_color.get("UIRed", 0),
-                    "green": ns_color.get("UIGreen", 0),
-                    "blue": ns_color.get("UIBlue", 0),
-                    "alpha": ns_color.get("UIAlpha", 1),
+                    "red": ns_color.get("UIRed", 0.0),
+                    "green": ns_color.get("UIGreen", 0.0),
+                    "blue": ns_color.get("UIBlue", 0.0),
+                    "alpha": ns_color.get("UIAlpha", 1.0),
                 }
             }
 
@@ -107,19 +170,24 @@ def decode_old_text(unserialized: Dict) -> List[Dict]:
         # font
         ns_font = attribute.get("NSFont")
 
-        # TODO Include strokeStyle, lineHeight
+        # strikethrough, underline
+        ns_strike = bool(attribute.get("NSStrikethrough", 0))
+        ns_underline = bool(attribute.get("NSUnderline", 0))
+
+        # TODO Include lineHeight and kerning
         formatted_data.append(
             {
                 # alignment might be wrong
                 "alignment": paragraph_style.get("NSAlignment", 1) + 1,
                 "length": length,
+                "strokeStyle": stroke_style,
                 "fillColor": color_data,
                 "fontName": ns_font["NSName"],
                 "fontSize": ns_font["NSSize"],
                 "kerning": 0,
                 "lineHeight": None,
-                "strikethrough": False,
-                "underline": False,
+                "strikethrough": ns_strike,
+                "underline": ns_underline,
             }
         )
 

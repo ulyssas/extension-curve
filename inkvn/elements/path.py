@@ -32,6 +32,9 @@ class pathGeometry:
         self.corner_radius: List[float] = []
         self.path = self.parse_nodes(closed, nodes)
 
+    def __repr__(self):
+        return f"pathGeometry(path: {self.path}, corner_radius: {self.corner_radius})"
+
     def parse_nodes(self, closed: bool, nodes: List[Dict]) -> inkex.Path:
         """Converts single pathGeometry data to inkex path."""
         path = inkex.Path()

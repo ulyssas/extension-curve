@@ -496,8 +496,6 @@ class CurveDecoder:
         """
         Reads Curve text element and returns VNTextElement.
         """
-        # TODO Improve Text support, new format
-
         text_data = text_element.styled_data
 
         string = ""
@@ -512,9 +510,9 @@ class CurveDecoder:
             # Which one(styledText or text) is which?
             text_prop_dict = self.get_child(text_data, "textProperty", True)
             styled_text = self.get_child(text_data, "styledText", True)
-            stroke_style_dict = self.get_child(text_data, "textStrokeStyle", True)
 
-            # textPath
+            # textPath for Curve
+            # TODO add textPath support
             text_path = self.get_child(text_data, "textPath", True)
             if text_path is not None:
                 inkex.utils.debug(
@@ -528,15 +526,19 @@ class CurveDecoder:
                     textFramePivot=text_prop_dict.get("textFramePivot"),
                 )
 
-            # text stroke_style only contains basicStrokeStyle
+            # basicStrokeStyle
+            basic_stroke_style = None
+            stroke_style_dict = self.get_child(text_data, "textStrokeStyle", True)
             if isinstance(stroke_style_dict, dict):
-                stroke_style = basicStrokeStyle(**stroke_style_dict)
+                basic_stroke_style = basicStrokeStyle(**stroke_style_dict)
 
             # styledTexts
             if isinstance(styled_text, dict):
                 string = styled_text["string"]
                 styles = t.decode_new_text(styled_text)
-                styled_text_list = self.read_styled_text(styles)
+                styled_text_list = self.read_styled_text(
+                    styles, basic_stroke_style=basic_stroke_style
+                )
 
             return VNTextElement(
                 string=string,
@@ -579,24 +581,41 @@ class CurveDecoder:
                 **base_element,
             )
 
-    @staticmethod
     def read_styled_text(
-        styles: List[Dict], global_style: Optional[styledElementData] = None
+        self,
+        styles: List[Dict],
+        global_style: Optional[styledElementData] = None,
+        basic_stroke_style: Optional[basicStrokeStyle] = None,
     ) -> List[singleStyledText]:
+        """reads list of style dictionary and converts into list of singleStyledText."""
+
         styled_text_list: List[singleStyledText] = []
         for style in styles:
             color = None
+            stroke = None
+
             # color
             if style.get("fillColor") is not None:
                 color = VNColor(style["fillColor"])
             # fallbacks to global style if there's no styles in text data
             elif global_style is not None and global_style.color is not None:
                 color = global_style.color
-                # stroke = global_style.stroke
-            # stroke # TODO text strokestyle(fix reader/text.py)
-            # if style.get("strokeStyle") is not None:
-            #    stroke = style["strokeStyle"]
-            #    stroke = pathStrokeStyle(stroke_style, stroke)
+
+            # stroke
+            if style.get("strokeStyle") is not None:  # only contains color & width
+                # Vectornator stroke
+                if (
+                    not basic_stroke_style
+                    and global_style is not None
+                    and global_style.stroke is not None
+                ):
+                    basic_stroke_style = global_style.stroke.basicStrokeStyle
+
+                stroke = self.read_stroke(style, basic_stroke_style)
+
+            # fallbacks to global style if there's no styles in text data
+            elif global_style is not None and global_style.stroke is not None:
+                stroke = global_style.stroke
 
             styled_text = singleStyledText(
                 length=style["length"],
@@ -607,7 +626,7 @@ class CurveDecoder:
                 lineHeight=style.get("lineHeight"),
                 fillColor=color,
                 fillGradient=None,  # TODO gradient must apply globally
-                strokeStyle=None,
+                strokeStyle=stroke,
                 strikethrough=style.get("strikethrough", False),
                 underline=style.get("underline", False),
             )
@@ -615,13 +634,20 @@ class CurveDecoder:
 
         return styled_text_list
 
-    def read_stroke(self, stylable: Dict) -> Optional[pathStrokeStyle]:
+    def read_stroke(
+        self, stylable: Dict, basic_stroke_style: Optional[basicStrokeStyle] = None
+    ) -> Optional[pathStrokeStyle]:
         """
         Reads stroke style and returns as class.
         for newer Curve, abstractPath will be used as `stylable`.
         """
         stroke_style = self.get_child(stylable, "strokeStyle", self.is_curve)
+        if stroke_style is None and stylable.get("strokeStyle") is not None:
+            # read_styled_text
+            stroke_style = stylable["strokeStyle"]
+
         if isinstance(stroke_style, dict):
+            # older format
             if (
                 "dashPattern" in stroke_style
                 and "join" in stroke_style
@@ -633,10 +659,20 @@ class CurveDecoder:
                     "join": stroke_style["join"],
                     "position": stroke_style["position"],
                 }
+            if (
+                basic_stroke_style is None
+                and stroke_style.get("basicStrokeStyle") is not None
+            ):
+                basic_stroke_style = basicStrokeStyle(
+                    **stroke_style["basicStrokeStyle"]
+                )
+
             return pathStrokeStyle(
-                basicStrokeStyle=basicStrokeStyle(**stroke_style["basicStrokeStyle"]),
+                basicStrokeStyle=basic_stroke_style,
                 color=VNColor(color_dict=stroke_style["color"]),
                 width=stroke_style["width"],
+                startArrow=stroke_style.get("startArrow"),
+                endArrow=stroke_style.get("endArrow"),
             )
         else:
             return None

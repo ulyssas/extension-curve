@@ -36,11 +36,11 @@
           <tspan style="font-size:18px;letter-spacing:0px;font-family:&quot;Helvetica&quot;;font-weight:bold;font-style:normal;fill:#000000;fill-opacity:1;fill-rule:nonzero"> Bold </tspan>
           <tspan style="font-size:18px;letter-spacing:0px;font-family:&quot;Helvetica&quot;;font-weight:normal;font-style:oblique;fill:#000000;fill-opacity:1;fill-rule:nonzero">Italic</tspan>
           <tspan style="font-size:18px;letter-spacing:0px;font-family:&quot;Helvetica&quot;;font-weight:bold;font-style:normal;fill:#000000;fill-opacity:1;fill-rule:nonzero"> </tspan>
-          <tspan style="font-size:18px;letter-spacing:0px;font-family:&quot;Helvetica&quot;;font-weight:normal;font-style:normal;fill:#000000;fill-opacity:1;fill-rule:nonzero">Underline</tspan>
+          <tspan style="font-size:18px;letter-spacing:0px;font-family:&quot;Helvetica&quot;;font-weight:normal;font-style:normal;fill:#000000;fill-opacity:1;fill-rule:nonzero;text-decoration-line:underline">Underline</tspan>
           <tspan style="font-size:18px;letter-spacing:0px;font-family:&quot;Helvetica&quot;;font-weight:bold;font-style:normal;fill:#000000;fill-opacity:1;fill-rule:nonzero"> </tspan>
-          <tspan style="font-size:18px;letter-spacing:0px;font-family:&quot;Helvetica&quot;;font-weight:normal;font-style:normal;fill:#000000;fill-opacity:1;fill-rule:nonzero">Strikethrough</tspan>
+          <tspan style="font-size:18px;letter-spacing:0px;font-family:&quot;Helvetica&quot;;font-weight:normal;font-style:normal;fill:#000000;fill-opacity:1;fill-rule:nonzero;text-decoration-line:line-through">Strikethrough</tspan>
           <tspan style="font-size:18px;letter-spacing:0px;font-family:&quot;Helvetica&quot;;font-weight:normal;font-style:normal;fill:#000000;fill-opacity:1;fill-rule:nonzero">  </tspan>
-          <tspan style="font-size:18px;letter-spacing:0px;font-family:&quot;Helvetica&quot;;font-weight:bold;font-style:oblique;fill:#000000;fill-opacity:1;fill-rule:nonzero">Underline&amp;Strike</tspan>
+          <tspan style="font-size:18px;letter-spacing:0px;font-family:&quot;Helvetica&quot;;font-weight:bold;font-style:oblique;fill:#000000;fill-opacity:1;fill-rule:nonzero;text-decoration-line:underline line-through">Underline&amp;Strike</tspan>
         </tspan>
       </text>
       <text inkscape:label="Kerning" style="opacity:1;mix-blend-mode:normal;display:inline;line-height:1" transform="translate(6.06547, 93.5536)">
@@ -117,7 +117,7 @@
       </text>
       <text inkscape:label="Stroke" style="opacity:1;mix-blend-mode:normal;display:inline;line-height:1" transform="translate(14.822, 275.352)">
         <tspan sodipodi:role="line" x="0" y="0.0px">
-          <tspan style="font-size:40px;letter-spacing:0px;font-family:&quot;Helvetica&quot;;font-weight:bold;font-style:normal;fill:none">Stroke</tspan>
+          <tspan style="font-size:40px;letter-spacing:0px;font-family:&quot;Helvetica&quot;;font-weight:bold;font-style:normal;fill:none;stroke:#000000;stroke-opacity:1;stroke-width:3;stroke-linecap:butt;stroke-linejoin:round;stroke-dasharray:0">Stroke</tspan>
         </tspan>
       </text>
       <text inkscape:label="Blurred" style="opacity:1;mix-blend-mode:normal;display:inline;filter:url(#filter5815);line-height:1" transform="translate(161.928, 277.929)">

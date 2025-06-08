@@ -33,6 +33,9 @@ class VNColor:
 
         self.hex, self.alpha = color_data
 
+    def __repr__(self):
+        return f"VNColor(hex: {self.hex}, alpha: {self.alpha})"
+
     def _extract_color_data(self, color_dict: Dict) -> Optional[Tuple[str, float]]:
         """
         Extracts hex and alpha values from the given dictionary.
@@ -124,6 +127,9 @@ class VNGradient:
             tr.add_matrix(*transform_matrix)
             self.transform = tr
 
+    def __repr__(self):
+        return f"VNGradient(gradient: {self.gradient}, transform: {self.transform})"
+
     @staticmethod
     def _convert_gradient(
         tr: Dict[str, Any], stops: List[Dict], type_value: int
@@ -176,6 +182,8 @@ class pathStrokeStyle:
     basicStrokeStyle: Optional[basicStrokeStyle]
     color: VNColor
     width: float
+    startArrow: Optional[str]  #  "arrow1"
+    endArrow: Optional[str]  #  "open square", "closed circle"
 
 
 class basicStrokeStyle:
@@ -188,6 +196,9 @@ class basicStrokeStyle:
         self.dashPattern: List[float] = self._process_dash_pattern(dashPattern)
         self.join: str = self._join_to_svg(join)
         self.position: int = position
+
+    def __repr__(self):
+        return f"basicStrokeStyle(cap: {self.cap}, dash: {self.dashPattern}, join: {self.join}, pos: {self.position})"
 
     @staticmethod
     def _process_dash_pattern(dashPattern: Optional[List[float]]) -> List[float]:
@@ -221,11 +232,11 @@ class basicStrokeStyle:
 class styledElementData:
     """
     Stores style attributes for text for passing to
-    read_vn_abs_path / read_vn_abs_text.
+    read_abs_path / read_abs_text.
     """
 
     styled_data: Dict
-    """abstractText(Vectornator) or abstractPath"""
+    """abstractText or abstractPath"""
     mask: bool
     stroke: Optional[pathStrokeStyle]
     color: Optional[VNColor]

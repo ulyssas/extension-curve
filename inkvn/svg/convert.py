@@ -10,16 +10,15 @@ import inkex
 import lxml.etree
 from inkex.base import SvgOutputMixin
 
-from ..reader.read import CurveReader
-
 from ..elements.artboard import VNArtboard
 from ..elements.base import VNBaseElement
-from ..elements.guide import VNGuideElement
 from ..elements.group import VNGroupElement
+from ..elements.guide import VNGuideElement
 from ..elements.image import VNImageElement
 from ..elements.path import VNPathElement
-from ..elements.text import VNTextElement, singleStyledText
 from ..elements.styles import VNColor, VNGradient, pathStrokeStyle
+from ..elements.text import VNTextElement, singleStyledText
+from ..reader.read import CurveReader
 
 
 class CurveConverter:
@@ -532,15 +531,18 @@ class CurveConverter:
         else:
             elem.style["fill"] = "none"
 
-        ## stroke
-        # if styled.strokeStyle:
-        #    self.set_stroke_styles(tspan, styled.strokeStyle)
+        # stroke
+        if styled.strokeStyle:
+            self.set_stroke_styles(elem, styled.strokeStyle)
 
-        ## decorations
-        # if styled.underline:
-        #    tspan.style["text-decoration"] = "underline"
-        # if styled.strikethrough:
-        #    tspan.style["text-decoration"] = "line-through"
+        # decorations
+        decorations: List[str] = []
+        if styled.underline:
+            decorations.append("underline")
+        if styled.strikethrough:
+            decorations.append("line-through")
+        if decorations:
+            elem.style["text-decoration-line"] = " ".join(decorations)
 
     def add_guide(self, guide_element: VNBaseElement, offset: inkex.Vector2d) -> None:
         """

@@ -1,6 +1,5 @@
 from inkvn.reader.text import decode_new_text, decode_old_text
 
-
 ENCODED_NEW_TEXT = {
     "alignment": {"values": [{"upperBound": 28, "value": 2}]},
     "fillColor": {
@@ -272,6 +271,7 @@ DECODED_OLD_TEXT = [
         "kerning": 0,
         "lineHeight": None,
         "strikethrough": False,
+        "strokeStyle": None,
         "underline": False,
     },
     {
@@ -290,6 +290,7 @@ DECODED_OLD_TEXT = [
         "kerning": 0,
         "lineHeight": None,
         "strikethrough": False,
+        "strokeStyle": None,
         "underline": False,
     },
     {
@@ -301,6 +302,7 @@ DECODED_OLD_TEXT = [
         "kerning": 0,
         "lineHeight": None,
         "strikethrough": False,
+        "strokeStyle": None,
         "underline": False,
     },
     {
@@ -319,6 +321,7 @@ DECODED_OLD_TEXT = [
         "kerning": 0,
         "lineHeight": None,
         "strikethrough": False,
+        "strokeStyle": None,
         "underline": False,
     },
     {
@@ -337,6 +340,7 @@ DECODED_OLD_TEXT = [
         "kerning": 0,
         "lineHeight": None,
         "strikethrough": False,
+        "strokeStyle": None,
         "underline": False,
     },
 ]
