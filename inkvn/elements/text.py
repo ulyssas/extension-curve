@@ -43,9 +43,9 @@ class singleStyledText:
         0: Left
         1: Center
         2: Right
-        3: Justify <- how do i do this?
+        3: Justify & Left
         """
-        return {0: "start", 1: "middle", 2: "end"}.get(self.alignment, "start")
+        return {0: "start", 1: "middle", 2: "end", 3: "justify"}.get(self.alignment, "start")
 
 
 @dataclass

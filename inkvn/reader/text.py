@@ -174,11 +174,15 @@ def decode_old_text(unserialized: Dict) -> List[Dict]:
         ns_strike = bool(attribute.get("NSStrikethrough", 0))
         ns_underline = bool(attribute.get("NSUnderline", 0))
 
+        alignment = paragraph_style.get("NSAlignment", 0)
+        # swap 1 & 2 (right & center)
+        if alignment in (1, 2):
+            alignment = 3 - alignment
+
         # TODO Include lineHeight and kerning
         formatted_data.append(
             {
-                # alignment might be wrong
-                "alignment": paragraph_style.get("NSAlignment", 1) + 1,
+                "alignment": alignment,
                 "length": length,
                 "strokeStyle": stroke_style,
                 "fillColor": color_data,

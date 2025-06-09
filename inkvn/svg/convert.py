@@ -362,7 +362,10 @@ class CurveConverter:
 
                     # set alignment(not working)
                     # text.style["text-align"] = styled.convert_text_anchor()
-                    # text.style["text-anchor"] = styled.convert_text_anchor()
+                    # if styled.convert_text_anchor() == "justify":
+                    #    text.style["text-anchor"] = "start"
+                    # else:
+                    #    text.style["text-anchor"] = styled.convert_text_anchor()
 
                     # apply style "until" there's no more text in para
                     apply_length = min(len(para) + 1 - para_offset, remaining_length)

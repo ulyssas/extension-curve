@@ -561,9 +561,9 @@ class CurveDecoder:
             # Legacy Curve
             if isinstance(text_prop_dict, dict):
                 transform = text_prop_dict.get("transform")  # matrix
-                # resize_mode = text_property.get("resizeMode")
-                # height = text_property.get("height")
-                # width = text_property.get("width")
+                # resize_mode = text_prop_dict.get("resizeMode")
+                # height = text_prop_dict.get("height")
+                # width = text_prop_dict.get("width")
 
             # styledText
             styled_text = NSKeyedUnarchiver(
