@@ -45,7 +45,9 @@ class singleStyledText:
         2: Right
         3: Justify & Left
         """
-        return {0: "start", 1: "middle", 2: "end", 3: "justify"}.get(self.alignment, "start")
+        return {0: "start", 1: "middle", 2: "end", 3: "justify"}.get(
+            self.alignment, "start"
+        )
 
 
 @dataclass

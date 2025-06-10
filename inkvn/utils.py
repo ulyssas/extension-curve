@@ -1,20 +1,20 @@
-# This file is derived from
-# https://github.com/avibrazil/NSKeyedUnArchiver
-# Original License is LGPL3
+# This file contains codes from:
+# https://github.com/avibrazil/NSKeyedUnArchiver (LGPL3)
+# https://gitlab.com/inkscape/extras/extension-afdesign (GPL2+)
+# https://github.com/mohanson/leb128 (MIT)
 
 import copy
 import datetime
 import plistlib
-import struct
 from io import BytesIO
-from typing import Dict, List
+from typing import Dict, List, Tuple
 
 from lxml import etree
 
 
+# from extension-afdesign
 def to_pretty_xml(xml_string: bytes) -> bytes:
     """Return a pretty xml string with newlines and indentation."""
-    # copied from inkaf
     # from https://stackoverflow.com/a/3974112/1320237
     # and https://stackoverflow.com/a/9612463/1320237
     parser = etree.XMLParser(remove_blank_text=True)
@@ -25,6 +25,32 @@ def to_pretty_xml(xml_string: bytes) -> bytes:
     return etree.tostring(element, pretty_print=True)
 
 
+# from leb128
+def _decode_leb128(b: bytearray) -> int:
+    """Decode the unsigned leb128 encoded bytearray."""
+    r = 0
+    for i, e in enumerate(b):
+        r = r + ((e & 0x7F) << (i * 7))
+    return r
+
+
+def read_varint(r: bytes, offset: int) -> Tuple[int, int]:
+    """
+    Decode the unsigned leb128 encoded value and returns (value, updated offset).
+    """
+    a = bytearray()
+    while True:
+        b = r[offset]
+        offset += 1
+        a.append(b)
+
+        # continue decode if MSB is 1
+        if (b & 0x80) == 0:
+            break
+    return _decode_leb128(a), offset
+
+
+# from NSKeyedUnArchiver
 def _unserialize(
     o: dict, serialized: dict, removeClassName: bool, plist_top: bool = True
 ):
@@ -118,28 +144,22 @@ def _unserialize(
     return reassembled
 
 
-def _decode_attrib_info(attr_bytes: bytes) -> List[Dict]:
+def _decode_attrib_info(data: bytes) -> List[Dict]:
     """
-    Tries to decode NSAttributeInfo in KeyedArchived NSAttributedString.
+    decodes NSAttributeInfo in KeyedArchived NSAttributedString.
     """
-    # FIXME decode_attrib_info(legacy text) does not work for longer texts
-    attr_data = []
     offset = 0
-    while offset < len(attr_bytes):
-        # 2bytes()
-        if offset + 2 <= len(attr_bytes):
-            length, attr_id = struct.unpack_from("<BB", attr_bytes, offset)
-            attr_data.append(
-                {
-                    "length": length,
-                    "attribute_id": attr_id,
-                }
-            )
-            offset += 2
-        else:
-            break
+    runs = []
 
-    return attr_data
+    while offset < len(data):
+        try:
+            length, offset = read_varint(data, offset)
+            attr_id, offset = read_varint(data, offset)
+
+            runs.append({"length": length, "attribute_id": attr_id})
+        except IndexError:
+            break
+    return runs
 
 
 def NSKeyedUnarchiver(plist, removeClassName=True):
