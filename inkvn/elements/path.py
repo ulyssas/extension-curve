@@ -10,7 +10,7 @@ from typing import Dict, List, Optional
 import inkex
 
 from .base import VNBaseElement
-from .styles import VNColor, VNGradient, pathStrokeStyle
+from .styles import VNColor, VNGradient, brushProfile, pathStrokeStyle
 
 
 @dataclass
@@ -21,6 +21,7 @@ class VNPathElement(VNBaseElement):
     fillColor: Optional[VNColor]
     fillGradient: Optional[VNGradient]
     strokeStyle: Optional[pathStrokeStyle]
+    brushProfile: Optional[brushProfile]
     # It's list because compoundPath has multiple pathGeometries
     pathGeometries: List[pathGeometry]
 

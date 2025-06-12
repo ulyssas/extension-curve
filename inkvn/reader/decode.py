@@ -27,6 +27,7 @@ from ..elements.styles import (
     VNColor,
     VNGradient,
     basicStrokeStyle,
+    brushProfile,
     pathStrokeStyle,
     styledElementData,
 )
@@ -303,6 +304,8 @@ class CurveDecoder:
                     )
 
                 if isinstance(abstract_path, dict):
+                    # old shape format (elementDescription)
+                    elem_desc = element.get("elementDescription")
                     path_element_data = styledElementData(
                         styled_data=abstract_path,
                         mask=mask,
@@ -310,7 +313,9 @@ class CurveDecoder:
                         color=fill_color,
                         grad=fill_gradient,
                     )
-                    return self.read_abs_path(path_element_data, base_element_data)
+                    return self.read_abs_path(
+                        path_element_data, base_element_data, elem_desc
+                    )
 
                 # Abstract Text (TextElement)
                 text_data = self.get_child(stylable, "text", self.is_curve)
@@ -413,7 +418,10 @@ class CurveDecoder:
             return VNBaseElement(**base_element)
 
     def read_abs_path(
-        self, path_element: styledElementData, base_element: Dict
+        self,
+        path_element: styledElementData,
+        base_element: Dict,
+        elem_desc: Optional[str] = None,
     ) -> VNPathElement:
         """Reads path element and returns VNPathElement."""
 
@@ -431,9 +439,20 @@ class CurveDecoder:
                     pathGeometry(closed=geometry["closed"], nodes=geometry["nodes"])
                 )
 
-        # Stroke Style
+        # stroke_type (0: regular, 1: brush)
+        stroke_type = path_element.styled_data.get("strokeType", 0)
+
+        # Regular Stroke Style
         if path_element.stroke is None:
             path_element.stroke = self.read_stroke(path_element.styled_data)
+
+        # Brush Stroke for Curve
+        # TODO check the older versions (<14, 19, 21, <44)
+        brush_profile = None
+        brush_prof_dict = None
+        brush_stroke = self.get_child(path_element.styled_data, "brushStroke", True)
+        if isinstance(brush_stroke, dict):
+            brush_prof_dict = self.get_child(brush_stroke, "brushProfile", True)
 
         # fill
         if path_element.color is None and path_element.grad is None:
@@ -453,6 +472,34 @@ class CurveDecoder:
                 inkex.utils.debug(
                     f"{base_element['name']}: textOnPath is not supported."
                 )
+
+            # shapeDescription in Newer Curve, same as elementDescription
+            if elem_desc is None:
+                elem_desc = path_data.get("inputParams", {}).get("shapeDescription")
+
+            # older format (elementDescription)
+            shape = path_data.get("inputParams", {}).get("shape", {}).get("_0")
+
+            # Vectornator (no compound support)
+            if not self.is_curve and shape is None:
+                shape = path_data.get("subElement", {}).get("shape", {}).get("_0")
+                # TODO check if _0 can contain brushProfile
+                brush_prof_dict = (
+                    path_data.get("subElement", {})
+                    .get("shape", {})
+                    .get("_1", {})
+                    .get("brushProfile")
+                )
+
+            if not self.is_curve and brush_prof_dict is None:
+                brush_prof_dict = (
+                    path_data.get("subElement", {})
+                    .get("neither", {})
+                    .get("_0", {})
+                    .get("brushProfile")
+                )
+
+            # inkex.utils.debug(f"{base_element['name']}: {elem_desc}, {shape}")
 
             # Path Geometry
             _add_path(path_data, path_geometry_list)
@@ -481,11 +528,16 @@ class CurveDecoder:
 
                     _add_path(sub_path, path_geometry_list)
 
+        if isinstance(brush_prof_dict, dict):
+            brush_profile = self.read_brush(brush_prof_dict)
+            # inkex.utils.debug(brush_profile)
+
         return VNPathElement(
             mask=path_element.mask,
             fillColor=path_element.color,
             fillGradient=path_element.grad,
             strokeStyle=path_element.stroke,
+            brushProfile=brush_profile,
             pathGeometries=path_geometry_list,
             **base_element,
         )
@@ -676,6 +728,17 @@ class CurveDecoder:
             )
         else:
             return None
+
+    @staticmethod
+    def read_brush(brush_prof_dict: Dict) -> brushProfile:
+        handles = brush_prof_dict["handles"]
+        return brushProfile(
+            handles=[(float(handle[0]), float(handle[1])) for handle in handles],
+            angle=brush_prof_dict["angle"],
+            roundness=brush_prof_dict["roundness"],
+            minimumWidth=brush_prof_dict["minimumWidth"],
+            containsPressure=brush_prof_dict["containsPressure"],
+        )
 
     def read_fill(
         self, stylable: Dict, single_style: Optional[Dict] = None

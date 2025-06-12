@@ -1,5 +1,5 @@
 """
-VNColor, VNGradient, pathStrokeStyle, basicStrokeStyle, styledElementData
+VNColor, VNGradient, pathStrokeStyle, basicStrokeStyle, styledElementData, brushProfile
 """
 
 from __future__ import annotations
@@ -241,3 +241,15 @@ class styledElementData:
     stroke: Optional[pathStrokeStyle]
     color: Optional[VNColor]
     grad: Optional[VNGradient]
+
+
+@dataclass
+class brushProfile:
+    """Vectornator brush stroke."""
+
+    # CubicBezierJohan is the closest?
+    handles: List[Tuple[float, float]]  # (position on stroke, width)
+    angle: float  # radian
+    roundness: float  # 0~1
+    minimumWidth: float  # 0~1
+    containsPressure: bool

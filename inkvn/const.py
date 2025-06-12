@@ -56,5 +56,7 @@ CURVE_MAPPING: Dict[str, CurveEntry] = {
         id="strokeStyleId", list=["pathStrokeStyles", "strokeStyles"]
     ),
     "textStrokeStyle": CurveEntry(id="strokeStyleId", list="textStrokeStyles"),
+    "brushStroke": CurveEntry(id="brushStrokeId", list="brushStrokes"),
+    "brushProfile": CurveEntry(id="brushProfileId", list="brushProfiles"),
     "fillTransform": CurveEntry(id="fillTransformId", list="fillTransforms"),
 }

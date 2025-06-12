@@ -439,6 +439,12 @@ class CurveConverter:
             elem.style["stroke-linejoin"] = stroke.basicStrokeStyle.join
             elem.style["stroke-dasharray"] = stroke.basicStrokeStyle.dashPattern
 
+        # marker
+        # if stroke.startArrow is not None:
+        #    #elem.style["marker-start"] = f"url(#{clip.get_id()})"
+        # if stroke.endArrow is not None:
+        #    #elem.style["marker-end"] = f"url(#{clip.get_id()})"
+
     def set_fill_color_styles(self, elem: inkex.BaseElement, fill: VNColor) -> None:
         """Apply fillColor to inkex.BaseElement."""
         elem.style["fill"] = fill.hex
