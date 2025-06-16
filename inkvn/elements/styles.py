@@ -248,7 +248,8 @@ class brushProfile:
     """Vectornator brush stroke."""
 
     # CubicBezierJohan is the closest?
-    handles: List[Tuple[float, float]]  # (position on stroke, width)
+    handles: List[Tuple[float, float]]
+    """position (on stroke), width"""
     angle: float  # radian
     roundness: float  # 0~1
     minimumWidth: float  # 0~1

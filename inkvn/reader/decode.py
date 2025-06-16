@@ -528,9 +528,8 @@ class CurveDecoder:
 
                     _add_path(sub_path, path_geometry_list)
 
-        if isinstance(brush_prof_dict, dict):
+        if stroke_type and isinstance(brush_prof_dict, dict):
             brush_profile = self.read_brush(brush_prof_dict)
-            # inkex.utils.debug(brush_profile)
 
         return VNPathElement(
             mask=path_element.mask,

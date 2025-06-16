@@ -4,6 +4,7 @@ inkvn Converter
 Convert the intermediate data to Inkscape read by read.py
 """
 
+import itertools
 from typing import List, Optional, Tuple, Union
 
 import inkex
@@ -16,7 +17,7 @@ from ..elements.group import VNGroupElement
 from ..elements.guide import VNGuideElement
 from ..elements.image import VNImageElement
 from ..elements.path import VNPathElement
-from ..elements.styles import VNColor, VNGradient, pathStrokeStyle
+from ..elements.styles import VNColor, VNGradient, brushProfile, pathStrokeStyle
 from ..elements.text import VNTextElement, singleStyledText
 from ..reader.read import CurveReader
 
@@ -214,9 +215,7 @@ class CurveConverter:
 
         return group
 
-    def convert_image(
-        self, image_element: VNImageElement
-    ) -> Union[inkex.Image, inkex.Group]:
+    def convert_image(self, image_element: VNImageElement) -> inkex.Image:
         """Converts a VNImageElement to an SVG image (inkex.Image)."""
         image = inkex.Image()
 
@@ -254,8 +253,13 @@ class CurveConverter:
 
         return image
 
-    def convert_path(self, path_element: VNPathElement) -> inkex.PathElement:
-        """Converts a VNPathElement to an SVG path (inkex.PathElement)."""
+    def convert_path(
+        self, path_element: VNPathElement
+    ) -> Union[inkex.PathElement, inkex.Group]:
+        """
+        Converts a VNPathElement to an SVG path (inkex.PathElement).
+        Returns inkex.Group when the element contains PowerStroke.
+        """
         path = inkex.PathElement()
 
         self.set_basic_attribs(path_element, path)
@@ -308,6 +312,27 @@ class CurveConverter:
             self.set_fill_grad_styles(path, path_element.fillGradient)
         else:
             path.style["fill"] = "none"
+
+        # PowerStroke
+        # TODO use linked-fill
+        if path_element.brushProfile is not None:
+            fill = None
+            group = inkex.Group()
+            self.set_basic_attribs(path_element, group)
+
+            if path.style["fill"] != "none":
+                fill = path.copy()
+                fill.style["stroke"] = "none"
+                fill.label = f"{fill.label}_fill"
+                path.label = f"{path.label}_stroke"
+
+            self.set_power_stroke(path, path_element.brushProfile)
+            if path_element.strokeStyle:
+                self.set_fill_color_styles(path, path_element.strokeStyle.color)
+                path.style["stroke"] = "none"
+            if fill is not None:
+                group.add(fill, path)
+                return group
 
         return path
 
@@ -457,20 +482,66 @@ class CurveConverter:
         elem.style["fill"] = f"url(#{fill.gradient.get_id()})"
         elem.style["fill-rule"] = "nonzero"
 
-    def set_blur(
-        self, elem: inkex.BaseElement, blur: inkex.Filter.GaussianBlur
-    ) -> None:
-        """Apply blur to inkex.BaseElement."""
-        filt: inkex.Filter = inkex.Filter()
-        filt.set("color-interpolation-filters", "sRGB")
-        filt.add(blur)
-        self.document.defs.add(filt)
+    def set_power_stroke(self, elem: inkex.ShapeElement, brush: brushProfile) -> None:
+        """Apply Power Stroke LPE to inkex.PathElement."""
+        # from extension-afdesign
+        path = elem.path
+        locations = [i[0] for i in brush.handles]
 
-        # Only one filter will be there
-        elem.style["filter"] = filt
+        # Get local lengths
+        subpaths = path.break_apart()
+        start_indices = [0] + list(itertools.accumulate(len(s) for s in subpaths))
+        moves = 0
+        resulting_offsets: List[Tuple[float, float]] = []
+        for start_index, subpath in zip(start_indices, subpaths):
+            # the same width curve is applied to all subpaths
+            lengths = [
+                command.length() if command.letter not in "Mm" else 0
+                for command in subpath.proxy_iterator()
+            ]
+            cumulative_lengths = list(itertools.accumulate(lengths))
+            total_length = cumulative_lengths[-1]
+            result = {}
+            moves += 1
+            for (_, l1), ((i, p2), l2) in inkex.utils.pairwise(
+                zip(enumerate(subpath.proxy_iterator()), cumulative_lengths),
+                start=False,
+            ):
+                if l2 - l1 == 0:
+                    moves += 1
+                for location in locations:
+                    if l1 <= location * total_length <= l2 and location not in result:
+                        # On the current segment and not processed yet
+                        # Coordinates are specified as
+                        # no. visible segment + local path coordinate
+                        result[location] = (start_index + i - moves) + p2.ilength(
+                            location * total_length - l1
+                        )
+            resulting_offsets.extend(
+                (result[point[0]], abs(point[1])) for point in brush.handles
+            )
+        width = elem.to_dimensionless(elem.style("stroke-width"))
 
-    def set_corner(self, elem: inkex.PathElement, corner_radius: List[float]) -> None:
-        """Apply rounded corner to inkex.PathElement."""
+        offset_pts = " | ".join(
+            f"{location:.6f},{offset * width / 2:.6f}"
+            for location, offset in resulting_offsets
+        )
+
+        path_effect = inkex.PathEffect.new(
+            effect="powerstroke",
+            is_visible="true",
+            lpeversion="1.3",
+            scale_width="2.0",
+            interpolator_type="CubicBezierSmooth",
+            interpolator_beta="0.22",
+            sort_points="true",
+            not_jump="false",
+            offset_points=offset_pts,
+        )
+        self.apply_lpe(elem, path_effect)
+
+    def set_corner(self, elem: inkex.ShapeElement, corner_radius: List[float]) -> None:
+        """Apply rounded corner to inkex.ShapeElement."""
         params = " @ ".join(f"F,0,0,1,0,{r},0,1" for r in corner_radius)
 
         # FIXME more cornerRadius work
@@ -485,10 +556,25 @@ class CurveConverter:
             satellites_param=params,  # Inkscape 1.2
             nodesatellites_param=params,  # Inkscape 1.3
         )
+        self.apply_lpe(elem, path_effect)
 
-        self.document.defs.add(path_effect)
+    def set_blur(
+        self, elem: inkex.BaseElement, blur: inkex.Filter.GaussianBlur
+    ) -> None:
+        """Apply blur to inkex.BaseElement."""
+        filt: inkex.Filter = inkex.Filter()
+        filt.set("color-interpolation-filters", "sRGB")
+        filt.add(blur)
+        self.document.defs.add(filt)
+
+        # Only one filter will be there
+        elem.style["filter"] = filt
+
+    def apply_lpe(self, elem: inkex.ShapeElement, effect: inkex.PathEffect) -> None:
+        """Apply LPE to inkex.ShapeElement."""
+        self.document.defs.add(effect)
         elem.set("inkscape:original-d", str(elem.path))
-        elem.set("inkscape:path-effect", f"{path_effect.get_id(1)}")
+        elem.set("inkscape:path-effect", f"{effect.get_id(1)}")
         elem.attrib.pop("d", None)  # delete "d", Inkscape auto-generates LPE path
 
     def set_tspan_style(self, elem: inkex.Tspan, styled: singleStyledText) -> None:
