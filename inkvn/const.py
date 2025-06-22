@@ -7,13 +7,9 @@ from typing import Dict, List, Union
 
 """
 styledText, textProperty is for Newer text format (only present in Curve.)
-because it's for newer text format.
 
 textPaths in Vectornator and Linearity Curve are very different
 (path contains text in Vectornator, text contains path in Linearity Curve.)
-
-abstractImage/image cannot use this setup because
-there are way too many changes between each versions
 """
 
 
@@ -38,8 +34,6 @@ CURVE_MAPPING: Dict[str, CurveEntry] = {
     "group": CurveEntry(id="group", list="groups"),
     "image": CurveEntry(id="image", list="images"),
     "abstractImage": CurveEntry(id="abstractImage", list="abstractImages"),
-    "imageData": CurveEntry(id="abstractImage", list="abstractImages"),
-    "abstractImageData": CurveEntry(id="abstractImage", list="abstractImages"),
     "stylable": CurveEntry(id="stylable", list="stylables"),
     "singleStyle": CurveEntry(id="singleStyle", list="singleStyles"),
     "abstractPath": CurveEntry(id="abstractPath", list="abstractPaths"),

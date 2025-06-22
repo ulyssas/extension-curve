@@ -477,13 +477,13 @@ class CurveDecoder:
             if elem_desc is None:
                 elem_desc = path_data.get("inputParams", {}).get("shapeDescription")
 
-            # older format (elementDescription)
+            # shapes with params
             shape = path_data.get("inputParams", {}).get("shape", {}).get("_0")
 
             # Vectornator (no compound support)
             if not self.is_curve and shape is None:
+                # TODO check if _0 can contain brushProfile (_0 vs _1)
                 shape = path_data.get("subElement", {}).get("shape", {}).get("_0")
-                # TODO check if _0 can contain brushProfile
                 brush_prof_dict = (
                     path_data.get("subElement", {})
                     .get("shape", {})
@@ -538,6 +538,7 @@ class CurveDecoder:
             strokeStyle=path_element.stroke,
             brushProfile=brush_profile,
             pathGeometries=path_geometry_list,
+            shapeDescription=elem_desc,
             **base_element,
         )
 

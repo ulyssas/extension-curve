@@ -534,6 +534,8 @@ class CurveConverter:
             scale_width="2.0",
             interpolator_type="CubicBezierSmooth",
             interpolator_beta="0.22",
+            start_linecap_type="round",
+            end_linecap_type="round",
             sort_points="true",
             not_jump="false",
             offset_points=offset_pts,

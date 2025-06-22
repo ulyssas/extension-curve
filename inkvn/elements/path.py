@@ -24,6 +24,7 @@ class VNPathElement(VNBaseElement):
     brushProfile: Optional[brushProfile]
     # It's list because compoundPath has multiple pathGeometries
     pathGeometries: List[pathGeometry]
+    shapeDescription: Optional[str]
 
 
 class pathGeometry:
