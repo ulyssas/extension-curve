@@ -273,7 +273,15 @@ class CurveConverter:
             path.transform = path_element.localTransform.convert_transform()
             path.apply_transform()
 
-        # PathEffect(corner), does not work for other paths in compoundPath
+        # clean-ups problematic paths by applying transforms twice
+        # (fixes PowerStroke performance issue w/ CubicBezierSmooth)
+        elif path_element.localTransform is not None:
+            path.transform = -path_element.localTransform.convert_transform()
+            path.apply_transform()
+            path.transform = path_element.localTransform.convert_transform()
+            path.apply_transform()
+
+        # Corners LPE, does not work for other paths in compoundPath
         if (
             not self.has_transform_applied
             and path_element.pathGeometries[0].corner_radius is not None
@@ -333,6 +341,11 @@ class CurveConverter:
             if fill is not None:
                 group.add(fill, path)
                 return group
+
+        # if path has LPE, strip original path to generate LPE path
+        path_effect_str = path.get("inkscape:path-effect")
+        if path_effect_str is not None:
+            path.attrib.pop("d", None)  # delete "d", Inkscape auto-generates LPE path
 
         return path
 
@@ -522,10 +535,21 @@ class CurveConverter:
             )
         width = elem.to_dimensionless(elem.style("stroke-width"))
 
-        offset_pts = " | ".join(
-            f"{location:.6f},{offset * width / 2:.6f}"
-            for location, offset in resulting_offsets
-        )
+        # remove duplicates
+        offset_sets = set(resulting_offsets)
+
+        path_effect_str = elem.get("inkscape:path-effect", "")
+        if path_effect_str:
+            # replicate offsets by doubling location
+            offset_pts = " | ".join(
+                f"{location * 2:.6f},{offset * width / 2:.6f}"
+                for location, offset in offset_sets
+            )
+        else:
+            offset_pts = " | ".join(
+                f"{location:.6f},{offset * width / 2:.6f}"
+                for location, offset in offset_sets
+            )
 
         path_effect = inkex.PathEffect.new(
             effect="powerstroke",
@@ -575,9 +599,12 @@ class CurveConverter:
     def apply_lpe(self, elem: inkex.ShapeElement, effect: inkex.PathEffect) -> None:
         """Apply LPE to inkex.ShapeElement."""
         self.document.defs.add(effect)
-        elem.set("inkscape:original-d", str(elem.path))
-        elem.set("inkscape:path-effect", f"{effect.get_id(1)}")
-        elem.attrib.pop("d", None)  # delete "d", Inkscape auto-generates LPE path
+        path_effect_str = elem.get("inkscape:path-effect", "")
+        if path_effect_str:
+            elem.set("inkscape:path-effect", f"{path_effect_str};{effect.get_id(1)}")
+        else:
+            elem.set("inkscape:path-effect", f"{effect.get_id(1)}")
+            elem.set("inkscape:original-d", str(elem.path))
 
     def set_tspan_style(self, elem: inkex.Tspan, styled: singleStyledText) -> None:
         # weight, style

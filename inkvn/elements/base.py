@@ -65,7 +65,7 @@ class VNTransform:
         self, keep_proportion=False, with_scale=True
     ) -> inkex.transforms.Transform:
         """
-        Creates a transform string for the `g` element in inkex.transforms.Transform.
+        Creates a transform string in inkex.transforms.Transform.
 
         keep_proportion applies scaling in x axis to y axis as well.
         with_scale determines whether to include scale or not.

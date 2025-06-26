@@ -51,14 +51,17 @@ class CurveReader:
 
         # Read Artboard (GUID JSON)
         for artboard_path in artboard_paths:
-            gid_json = ext.extract_gid_json(self.archive, artboard_path)
-            decoder = CurveDecoder(
-                archive=self.archive,
-                gid_json=gid_json,
-                is_curve=self.check_if_curve(self.app_version),
-                file_version=self.file_version,
-            )
-            self.artboards.append(decoder.artboard)
+            try:
+                gid_json = ext.extract_gid_json(self.archive, artboard_path)
+                decoder = CurveDecoder(
+                    archive=self.archive,
+                    gid_json=gid_json,
+                    is_curve=self.check_if_curve(self.app_version),
+                    file_version=self.file_version,
+                )
+                self.artboards.append(decoder.artboard)
+            except FileNotFoundError as e:
+                inkex.errormsg(f"read.py: {e} skipped reading the artboard.")
 
     def convert_unit(self):
         """Convert document unit to SVG."""

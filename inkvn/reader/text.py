@@ -148,8 +148,10 @@ def decode_old_text(unserialized: Dict) -> List[Dict]:
                         "alpha": ns_stroke_color.get("UIAlpha", 1.0),
                     },
                 },
-                "width": abs(attribute.get("NSStrokeWidth", 1.0)),
+                "width": max(0, attribute.get("NSStrokeWidth", 1.0)),
             }
+            if stroke_style["width"] <= 0:
+                stroke_style = None
 
         # color
         color_data = None

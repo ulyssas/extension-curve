@@ -13,8 +13,8 @@
   </sodipodi:namedview>
   <g inkscape:groupmode="layer" inkscape:label="TestingBoard1">
     <g inkscape:groupmode="layer" inkscape:label="Layer 1" opacity="1" style="display:inline">
-      <path inkscape:label="Blur100" style="opacity:1;mix-blend-mode:normal;display:inline;filter:url(#filter5815);stroke:none;fill:#3E67FF;fill-opacity:1;fill-rule:nonzero" d="M 171.944 97.7082 L 371.944 97.7082 C 427.173 97.7082 471.944 142.48 471.944 197.708 L 471.944 297.708 C 471.944 352.937 427.173 397.708 371.944 397.708 L 171.944 397.708 C 116.716 397.708 71.9443 352.937 71.9443 297.708 L 71.9443 197.708 C 71.9443 142.48 116.716 97.7082 171.944 97.7082 Z"/>
-      <path inkscape:label="Blur20" style="opacity:1;mix-blend-mode:normal;display:inline;filter:url(#filter8555);stroke:#00FF92;stroke-opacity:1;stroke-width:17.1;stroke-linecap:butt;stroke-linejoin:round;stroke-dasharray:0;fill:#FFCB00;fill-opacity:1;fill-rule:nonzero" d="M 491.303 67.4504 L 579.575 246.309 L 776.957 274.991 L 634.13 414.213 L 667.847 610.798 L 491.303 517.983 L 314.758 610.798 L 348.475 414.213 L 205.648 274.991 L 403.03 246.309 L 491.303 67.4504 Z"/>
+      <path inkscape:label="Blur100" style="opacity:1;mix-blend-mode:normal;display:inline;filter:url(#filter5815);stroke:none;fill:#3E67FF;fill-opacity:1;fill-rule:nonzero" d="M 171.944 97.7078 L 371.944 97.7078 C 427.172 97.7078 471.943 142.48 471.943 197.708 L 471.943 297.708 C 471.943 352.936 427.172 397.708 371.944 397.708 L 171.944 397.708 C 116.716 397.708 71.9447 352.936 71.9447 297.708 L 71.9447 197.708 C 71.9447 142.48 116.716 97.7078 171.944 97.7078 Z"/>
+      <path inkscape:label="Blur20" style="opacity:1;mix-blend-mode:normal;display:inline;filter:url(#filter8555);stroke:#00FF92;stroke-opacity:1;stroke-width:17.1;stroke-linecap:butt;stroke-linejoin:round;stroke-dasharray:0;fill:#FFCB00;fill-opacity:1;fill-rule:nonzero" d="M 491.303 67.45 L 579.575 246.309 L 776.957 274.991 L 634.13 414.213 L 667.847 610.798 L 491.303 517.983 L 314.758 610.798 L 348.475 414.213 L 205.648 274.991 L 403.03 246.309 L 491.303 67.45 Z"/>
     </g>
   </g>
 </svg>
