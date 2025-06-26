@@ -42,10 +42,19 @@ class CurveInput(inkex.InputExtension):
             default=True,
             help="Create an SVG file that has several lines and looks pretty to read.",
         )
+        pars.add_argument(
+            "--debug",
+            type=inkex.Boolean,
+            dest="debug_info",
+            default=False,
+            help="Print project file infos.",
+        )
 
     def load(self, stream):
         converter = CurveConverter()
-        converter.convert(CurveReader(stream), self.options.clip_page)
+        converter.convert(
+            CurveReader(stream, self.options.debug_info), self.options.clip_page
+        )
         return self.svg_to_string(converter.doc.getroot())
 
     def svg_to_string(self, svg: inkex.SvgDocumentElement) -> bytes:

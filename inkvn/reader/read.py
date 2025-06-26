@@ -23,7 +23,8 @@ class CurveReader:
     A Linearity Curve / Vectornator file reader to convert Curve documents into dataclasses.
     """
 
-    def __init__(self, stream):
+    def __init__(self, stream, is_debug: bool):
+        self.is_debug: bool = is_debug
         self.archive = zipfile.ZipFile(stream, "r")
         self.file_version: int = 44  # main support
         self.app_version: str
@@ -44,8 +45,12 @@ class CurveReader:
         self.file_version = manifest["fileFormatVersion"]
         artboard_paths = drawing_data["artboardPaths"]
 
-        # different file versions have incompatible structure, reporting App version & File version greatly helps
-        # inkex.utils.debug(f"App version: {self.app_version}, File version: {self.file_version}, File name: {self.archive.filename}")
+        # different file versions have incompatible structure.
+        # reporting App version & File version greatly helps
+        if self.is_debug:
+            inkex.utils.debug(
+                f"App version: {self.app_version}, File version: {self.file_version}, File name: {self.archive.filename}"
+            )
 
         assert len(artboard_paths), "No artboard paths found in the document."
 
