@@ -1,9 +1,10 @@
 # Copyright (C) 2024 Jonathan Neuhauser <jonathan.neuhauser@outlook.com>
 # SPDX-License-Identifier: GPL-2.0-or-later
 
-from inkvn.vninput import CurveInput
 from inkex.tester import ComparisonMixin, TestCase
 from inkex.tester.filters import CompareOrderIndependentStyle
+
+from inkvn.vninput import CurveInput
 
 
 class TestCurveConverter(ComparisonMixin, TestCase):
@@ -14,12 +15,14 @@ class TestCurveConverter(ComparisonMixin, TestCase):
         "./artboards_and_guides.curve",
         "./blend_modes.curve",
         "./blur.curve",
+        "./brush.curve",
         "./gradient.curve",
         "./image.curve",
         "./variousshapes.curve",
         "./artboards_and_guides.vectornator",
         "./blend_modes.vectornator",
         "./blur.vectornator",
+        "./brush.vectornator",
         "./gradient.vectornator",
         "./image.vectornator",
         "./variousshapes.vectornator",
