@@ -1,7 +1,7 @@
 <!-- Converted by extension-curve -->
 <svg xmlns="http://www.w3.org/2000/svg" xmlns:svg="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd" xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape" viewBox="0 0 800 600" width="800px" height="600px">
   <defs>
-    <inkscape:path-effect effect="powerstroke" is_visible="true" lpeversion="1.3" scale_width="2.0" interpolator_type="CubicBezierJohan" interpolator_beta="0.22" start_linecap_type="round" end_linecap_type="round" sort_points="true" not_jump="false" offset_points="1.424535,3.907812 | 0.946720,7.627344 | 0.000122,0.000000 | 1.999878,0.000000" id="path-effect5815"/>
+    <inkscape:path-effect effect="powerstroke" is_visible="true" lpeversion="1.3" scale_width="2.0" interpolator_type="CubicBezierJohan" interpolator_beta="0.22" start_linecap_type="round" end_linecap_type="round" sort_points="true" not_jump="false" offset_points="0.000122,0.000000 | 0.946720,7.627344 | 1.424535,3.907812 | 1.999878,0.000000" id="path-effect5815"/>
   </defs>
   <sodipodi:namedview>
     <inkscape:page x="0" y="0" width="800" height="600" inkscape:label="VariousShapes"/>

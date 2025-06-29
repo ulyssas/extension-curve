@@ -528,18 +528,19 @@ class CurveConverter:
 
         # remove duplicates
         offset_sets = set(resulting_offsets)
+        sorted_offsets = sorted(list(offset_sets), key=lambda item: item[0])
 
         path_effect_str = elem.get("inkscape:path-effect", "")
         if path_effect_str:
             # replicate offsets by doubling location
             offset_pts = " | ".join(
                 f"{location * 2:.6f},{offset * width / 2:.6f}"
-                for location, offset in offset_sets
+                for location, offset in sorted_offsets
             )
         else:
             offset_pts = " | ".join(
                 f"{location:.6f},{offset * width / 2:.6f}"
-                for location, offset in offset_sets
+                for location, offset in sorted_offsets
             )
 
         # FIXME Vectornator produces problematic paths
