@@ -273,14 +273,6 @@ class CurveConverter:
             path.transform = path_element.localTransform.convert_transform()
             path.apply_transform()
 
-        # clean-ups problematic paths by applying transforms twice
-        # (fixes PowerStroke performance issue w/ CubicBezierSmooth)
-        elif path_element.localTransform is not None:
-            path.transform = -path_element.localTransform.convert_transform()
-            path.apply_transform()
-            path.transform = path_element.localTransform.convert_transform()
-            path.apply_transform()
-
         # Corners LPE, does not work for other paths in compoundPath
         if (
             not self.has_transform_applied
@@ -338,14 +330,13 @@ class CurveConverter:
             if path_element.strokeStyle:
                 self.set_fill_color_styles(path, path_element.strokeStyle.color)
                 path.style["stroke"] = "none"
+
             if fill is not None:
+                self.update_lpe(fill, path)
                 group.add(fill, path)
                 return group
 
-        # if path has LPE, strip original path to generate LPE path
-        path_effect_str = path.get("inkscape:path-effect")
-        if path_effect_str is not None:
-            path.attrib.pop("d", None)  # delete "d", Inkscape auto-generates LPE path
+        self.update_lpe(path)
 
         return path
 
@@ -551,12 +542,14 @@ class CurveConverter:
                 for location, offset in offset_sets
             )
 
+        # FIXME Vectornator produces problematic paths
+        # that slows down / bricks CubicBezierSmooth
         path_effect = inkex.PathEffect.new(
             effect="powerstroke",
             is_visible="true",
             lpeversion="1.3",
             scale_width="2.0",
-            interpolator_type="CubicBezierSmooth",
+            interpolator_type="CubicBezierJohan",
             interpolator_beta="0.22",
             start_linecap_type="round",
             end_linecap_type="round",
@@ -605,6 +598,15 @@ class CurveConverter:
         else:
             elem.set("inkscape:path-effect", f"{effect.get_id(1)}")
             elem.set("inkscape:original-d", str(elem.path))
+
+    @staticmethod
+    def update_lpe(*paths: inkex.ShapeElement):
+        """Strip original path to generate LPE path, if `path` has LPE."""
+        for path in paths:
+            path_effect_str = path.get("inkscape:path-effect")
+            if path_effect_str is not None:
+                # delete "d", Inkscape auto-generates LPE path
+                path.attrib.pop("d", None)
 
     def set_tspan_style(self, elem: inkex.Tspan, styled: singleStyledText) -> None:
         # weight, style
