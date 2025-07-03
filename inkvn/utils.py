@@ -6,6 +6,7 @@
 import copy
 import datetime
 import plistlib
+from dataclasses import fields
 from io import BytesIO
 from typing import Dict, List, Tuple
 
@@ -23,6 +24,11 @@ def to_pretty_xml(xml_string: bytes) -> bytes:
     file.seek(0)
     element = etree.parse(file, parser)
     return etree.tostring(element, pretty_print=True)
+
+
+def asdict_shallow(obj) -> Dict:
+    """Convert dataclasses into dict, but only the to-level."""
+    return {f.name: getattr(obj, f.name) for f in fields(obj)}
 
 
 # from leb128

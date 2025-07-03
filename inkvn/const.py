@@ -3,6 +3,7 @@ CURVE / VECTORNATOR MAPPING
 """
 
 from dataclasses import dataclass
+from enum import Enum
 from typing import Dict, List, Union
 
 """
@@ -54,3 +55,15 @@ CURVE_MAPPING: Dict[str, CurveEntry] = {
     "brushProfile": CurveEntry(id="brushProfileId", list="brushProfiles"),
     "fillTransform": CurveEntry(id="fillTransformId", list="fillTransforms"),
 }
+
+
+class VNShape(str, Enum):
+    """strings for elementDescription / shapeDescription"""
+
+    RECT = "(rectangle)"
+    OVAL = "(oval)"
+    STAR = "(star)"
+    POLYGON = "(polygon)"
+    SPIRAL = "(spiral)"
+    LINE = "(line)"
+    CURVE = "(curve)"

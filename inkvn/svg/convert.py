@@ -5,11 +5,14 @@ Convert the intermediate data to Inkscape read by read.py
 """
 
 import itertools
+import traceback
 from typing import List, Optional, Tuple, Union
 
 import inkex
 import lxml.etree
 from inkex.base import SvgOutputMixin
+
+from inkvn.const import VNShape
 
 from ..elements.artboard import VNArtboard
 from ..elements.base import VNBaseElement
@@ -173,6 +176,7 @@ class CurveConverter:
 
         except Exception as e:
             inkex.errormsg(f"Error converting element: {e}")
+            inkex.errormsg(f"{traceback.format_exc()}")
             return None
 
     def convert_group(self, group_element: VNGroupElement) -> inkex.Group:
@@ -255,7 +259,7 @@ class CurveConverter:
 
     def convert_path(
         self, path_element: VNPathElement
-    ) -> Union[inkex.PathElement, inkex.Group]:
+    ) -> Union[inkex.ShapeElement, inkex.Group]:
         """
         Converts a VNPathElement to an SVG path (inkex.PathElement).
         Returns inkex.Group when the element contains PowerStroke.
@@ -269,13 +273,24 @@ class CurveConverter:
             for path_geometry in path_element.pathGeometries:
                 path.path += path_geometry.path
 
+        # shape (Rectangle only)
+        if path_element.shapeDescription == VNShape.RECT:
+            shape = path_element.convert_shape(path, self.has_transform_applied)
+
+            if shape is not None:
+                self.set_basic_attribs(path_element, shape)
+                path = shape
+
         if not self.has_transform_applied and path_element.localTransform is not None:
             path.transform = path_element.localTransform.convert_transform()
-            path.apply_transform()
+
+            if isinstance(path, inkex.PathElement):
+                path.apply_transform()
 
         # Corners LPE, does not work for other paths in compoundPath
         if (
-            not self.has_transform_applied
+            isinstance(path, inkex.PathElement)
+            and not self.has_transform_applied
             and path_element.pathGeometries[0].corner_radius is not None
         ):
             corner_radius = path_element.pathGeometries[0].corner_radius
@@ -283,8 +298,16 @@ class CurveConverter:
                 self.set_corner(path, corner_radius)
 
         # Stroke Style
-        if path_element.strokeStyle is not None:
-            self.set_stroke_styles(path, path_element.strokeStyle)
+        if (
+            path_element.strokeStyle is not None
+            and path_element.localTransform is not None
+        ):
+            if not isinstance(path, inkex.PathElement):
+                self.set_stroke_styles(
+                    path, path_element.strokeStyle, path_element.localTransform.scale[0]
+                )
+            else:
+                self.set_stroke_styles(path, path_element.strokeStyle)
         else:
             path.style["stroke"] = "none"
 
@@ -296,12 +319,18 @@ class CurveConverter:
             # matrix transform is based on Vectornator 4.13.2, format 13
             # and Linearity Curve 5.1.1, format 21
             if path_element.fillGradient.transform is not None:
-                path_element.fillGradient.gradient.set(
-                    "gradientTransform", path_element.fillGradient.transform
-                )
+                tr = path_element.fillGradient.transform
+                if (
+                    self.has_transform_applied
+                    and path_element.localTransform is not None
+                ):
+                    tr = -path_element.localTransform.convert_transform() @ tr
+
+                path_element.fillGradient.gradient.set("gradientTransform", tr)
 
             elif (
-                not self.has_transform_applied
+                isinstance(path, inkex.PathElement)
+                and not self.has_transform_applied
                 and path_element.localTransform is not None
             ):
                 gradient_transform = path_element.localTransform.convert_transform()
@@ -457,12 +486,12 @@ class CurveConverter:
             self.set_blur(elem, base_element.convert_blur())
 
     def set_stroke_styles(
-        self, elem: inkex.BaseElement, stroke: pathStrokeStyle
+        self, elem: inkex.BaseElement, stroke: pathStrokeStyle, scale: float = 1.0
     ) -> None:
-        """Apply pathStrokeStyle to inkex.BaseElement."""
+        """Apply pathStrokeStyle to inkex.BaseElement. `scale` is used for scaling stroke width for shape objects."""
         elem.style["stroke"] = stroke.color.hex
         elem.style["stroke-opacity"] = stroke.color.alpha
-        elem.style["stroke-width"] = stroke.width
+        elem.style["stroke-width"] = stroke.width / scale
         if stroke.basicStrokeStyle is not None:
             elem.style["stroke-linecap"] = stroke.basicStrokeStyle.cap
             elem.style["stroke-linejoin"] = stroke.basicStrokeStyle.join

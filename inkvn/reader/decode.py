@@ -4,7 +4,7 @@ inkvn decoder
 converts both Vectornator JSON and Linearity Curve JSON data to inkvn.
 This is used for Linearity Curve 5.0.x import as well (which are format 19).
 
-Needs more Vectornator files and fileFormatVersion 30~39 for reference
+Needs more Vectornator files and fileFormatVersion 30~39, 41~43 for reference
 """
 
 import base64
@@ -15,14 +15,14 @@ import inkex
 import inkvn.reader.extract as ext
 import inkvn.reader.text as t
 from inkvn.const import CURVE_MAPPING
-from inkvn.utils import NSKeyedUnarchiver
+from inkvn.utils import NSKeyedUnarchiver, asdict_shallow
 
 from ..elements.artboard import Frame, VNArtboard, VNLayer
 from ..elements.base import VNBaseElement, VNTransform
 from ..elements.group import VNGroupElement
 from ..elements.guide import VNGuideElement
 from ..elements.image import VNImageElement
-from ..elements.path import VNPathElement, pathGeometry
+from ..elements.path import VNPathElement, pathGeometry, shapeParameter
 from ..elements.styles import (
     VNColor,
     VNGradient,
@@ -224,41 +224,41 @@ class CurveDecoder:
 
     def read_element(self, element: Dict) -> VNBaseElement:
         """Traverse specified element and extract their attributes."""
-        base_element_data = {
-            "name": element.get("name", "Unnamed Element"),
-            "blur": element.get("blur", 0.0),
-            "opacity": element.get("opacity", 1.0),
-            "blendMode": element.get("blendMode", 0),
-            "isHidden": element.get("isHidden", False),
-            "isLocked": element.get("isLocked", False),
-            "localTransform": None,
-        }
+        base_element = VNBaseElement(
+            name=element.get("name", "Unnamed Element"),
+            blur=element.get("blur", 0.0),
+            opacity=element.get("opacity", 1.0),
+            blendMode=element.get("blendMode", 0),
+            isHidden=element.get("isHidden", False),
+            isLocked=element.get("isLocked", False),
+            localTransform=None,
+        )
 
         try:
             # localTransform (BaseElement)
             local_transform = self.get_child(element, "localTransform", self.is_curve)
             if isinstance(local_transform, dict):
-                base_element_data["localTransform"] = VNTransform(**local_transform)
+                base_element.localTransform = VNTransform(**local_transform)
 
             # Guide (GuideElement)
             guide = self.get_child(element, "guideLine", self.is_curve)
             if isinstance(guide, dict):
-                return VNGuideElement(**guide, **base_element_data)
+                return VNGuideElement(**guide, **asdict_shallow(base_element))
 
             # Group (GroupElement)
             group = self.get_child(element, "group", self.is_curve)
             if isinstance(group, dict):
-                return self.read_group(group, base_element_data)
+                return self.read_group(group, base_element)
 
             # Image (ImageElement)
             image = self.get_child(element, "image", self.is_curve)
             if isinstance(image, dict):
-                return self.read_image(image, base_element_data)
+                return self.read_image(image, base_element)
 
             # abstractImage in Curve 5.13.0, format 40
             abs_image = self.get_child(element, "abstractImage", True)
             if isinstance(abs_image, dict):
-                return self.read_image(abs_image, base_element_data)
+                return self.read_image(abs_image, base_element)
 
             # Stylable (either PathElement or TextElement)
             stylable = self.get_child(element, "stylable", self.is_curve)
@@ -314,7 +314,7 @@ class CurveDecoder:
                         grad=fill_gradient,
                     )
                     return self.read_abs_path(
-                        path_element_data, base_element_data, elem_desc
+                        path_element_data, base_element, elem_desc
                     )
 
                 # Abstract Text (TextElement)
@@ -327,19 +327,19 @@ class CurveDecoder:
                         color=fill_color,
                         grad=fill_gradient,
                     )
-                    return self.read_abs_text(text_element_data, base_element_data)
+                    return self.read_abs_text(text_element_data, base_element)
 
             # if the element is unknown type:
             raise NotImplementedError(
-                f"{base_element_data['name']}: This element has unknown type."
+                f"{base_element.name}: This element has unknown type."
             )
 
         except Exception as e:
             inkex.errormsg(f"Error reading element: {e}")
-            return VNBaseElement(**base_element_data)
+            return base_element
 
     def read_group(
-        self, group: Dict, base_element: Dict
+        self, group: Dict, base_element: VNBaseElement
     ) -> Union[VNGroupElement, VNBaseElement]:
         """Reads elements inside group and returns as VNGroupElement."""
         # get elements inside group
@@ -352,12 +352,14 @@ class CurveDecoder:
                     # get group elements recursively
                     group_element_list.append(self.read_element(group_element))
 
-            return VNGroupElement(groupElements=group_element_list, **base_element)
+            return VNGroupElement(
+                groupElements=group_element_list, **asdict_shallow(base_element)
+            )
         else:
-            return VNBaseElement(**base_element)
+            return base_element
 
     def read_image(
-        self, image: Dict, base_element: Dict
+        self, image: Dict, base_element: VNBaseElement
     ) -> Union[VNImageElement, VNBaseElement]:
         """Reads image element, encodes image in Base64 and returns VNImageElement."""
 
@@ -365,7 +367,7 @@ class CurveDecoder:
             crop_rect = image.get("cropRect")
             if crop_rect is not None:
                 assert isinstance(crop_rect, list) and len(crop_rect) == 2, (
-                    f"{base_element.get('name', 'Unnamed Element')}: Invalid crop_rect."
+                    f"{base_element.name}: Invalid crop_rect."
                 )
                 return (
                     (float(crop_rect[0][0]), float(crop_rect[0][1])),
@@ -412,15 +414,15 @@ class CurveDecoder:
                 imageData=encoded_image,
                 transform=transform,
                 cropRect=crop_rect,
-                **base_element,
+                **asdict_shallow(base_element),
             )
         else:
-            return VNBaseElement(**base_element)
+            return base_element
 
     def read_abs_path(
         self,
         path_element: styledElementData,
-        base_element: Dict,
+        base_element: VNBaseElement,
         elem_desc: Optional[str] = None,
     ) -> VNPathElement:
         """Reads path element and returns VNPathElement."""
@@ -462,20 +464,23 @@ class CurveDecoder:
             elif isinstance(fill_result, VNColor):
                 path_element.color = fill_result
 
-        # Path
+        # Path & Shape
+        shape_param = None
         path_data = self.get_child(path_element.styled_data, "pathData", self.is_curve)
         path_geometry_list: List[pathGeometry] = []
         if isinstance(path_data, dict):
             # textPath for Vectornator
             text_path = path_data.get("subElement", {}).get("textPath", {}).get("_0")
             if text_path is not None:
-                inkex.utils.debug(
-                    f"{base_element['name']}: textOnPath is not supported."
-                )
+                inkex.utils.debug(f"{base_element.name}: textOnPath is not supported.")
 
             # shapeDescription in Newer Curve, same as elementDescription
             if elem_desc is None:
-                elem_desc = path_data.get("inputParams", {}).get("shapeDescription")
+                elem_desc = (
+                    path_data.get("inputParams", {})
+                    .get("shapeDescription", {})
+                    .get("_0")
+                )
 
             # shapes with params
             shape = path_data.get("inputParams", {}).get("shape", {}).get("_0")
@@ -503,6 +508,14 @@ class CurveDecoder:
 
             # Path Geometry
             _add_path(path_data, path_geometry_list)
+
+            # shape init
+            if shape is not None:
+                shape_param = shapeParameter(
+                    shape["additionalValue"],
+                    (shape["initialPoint"][0], shape["initialPoint"][1]),
+                    (shape["endPoint"][0], shape["endPoint"][1]),
+                )
 
         # compoundPath
         compound_path_data = self.get_child(
@@ -539,11 +552,12 @@ class CurveDecoder:
             brushProfile=brush_profile,
             pathGeometries=path_geometry_list,
             shapeDescription=elem_desc,
-            **base_element,
+            shapeParameter=shape_param,
+            **asdict_shallow(base_element),
         )
 
     def read_abs_text(
-        self, text_element: styledElementData, base_element: Dict
+        self, text_element: styledElementData, base_element: VNBaseElement
     ) -> Union[VNTextElement, VNBaseElement]:
         """
         Reads Curve text element and returns VNTextElement.
@@ -567,9 +581,7 @@ class CurveDecoder:
             # TODO add textPath support
             text_path = self.get_child(text_data, "textPath", True)
             if text_path is not None:
-                inkex.utils.debug(
-                    f"{base_element['name']}: textOnPath is not supported."
-                )
+                inkex.utils.debug(f"{base_element.name}: textOnPath is not supported.")
 
             # texts(layout??), will be named textProperty internally
             if isinstance(text_prop_dict, dict):
@@ -597,7 +609,7 @@ class CurveDecoder:
                 transform=None,
                 styledText=styled_text_list,
                 textProperty=text_property,
-                **base_element,
+                **asdict_shallow(base_element),
             )
 
         # legacy text
@@ -630,7 +642,7 @@ class CurveDecoder:
                 transform=transform,
                 styledText=styled_text_list,
                 textProperty=text_property,  # TODO no text property
-                **base_element,
+                **asdict_shallow(base_element),
             )
 
     def read_styled_text(
