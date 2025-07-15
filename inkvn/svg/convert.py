@@ -12,7 +12,7 @@ import inkex
 import lxml.etree
 from inkex.base import SvgOutputMixin
 
-from inkvn.const import VNShape
+from inkvn.const import CurveShape
 
 from ..elements.artboard import VNArtboard
 from ..elements.base import VNBaseElement
@@ -274,7 +274,7 @@ class CurveConverter:
                 path.path += path_geometry.path
 
         # shape (Rectangle only)
-        if path_element.shapeDescription == VNShape.RECT:
+        if path_element.shapeDescription == CurveShape.RECT:
             shape = path_element.convert_shape(path, self.has_transform_applied)
 
             if shape is not None:

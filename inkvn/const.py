@@ -57,7 +57,7 @@ CURVE_MAPPING: Dict[str, CurveEntry] = {
 }
 
 
-class VNShape(str, Enum):
+class CurveShape(str, Enum):
     """strings for elementDescription / shapeDescription"""
 
     RECT = "(rectangle)"

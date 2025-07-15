@@ -10,7 +10,7 @@ from typing import Dict, List, Optional, Tuple
 
 import inkex
 
-from inkvn.const import VNShape
+from inkvn.const import CurveShape
 
 from .base import VNBaseElement
 from .styles import VNColor, VNGradient, brushProfile, pathStrokeStyle
@@ -35,16 +35,18 @@ class VNPathElement(VNBaseElement):
     ) -> Optional[inkex.ShapeElement]:
         """Return inkex.ShapeElement (only Rectangle for now)."""
 
-        # it's not possible to create open path shape
+        # TODO スケールだけ適用できないか?
+
+        # avoid creating shape for open path
         if not all(p.closed for p in self.pathGeometries):
             return None
 
-        # if both are missing, don't create shapes
+        # don't create shapes if both are missing
         if not self.shapeDescription and not self.shapeParameter:
             return None
 
         # Rectangle
-        if self.shapeDescription == VNShape.RECT:
+        if self.shapeDescription == CurveShape.RECT:
             return self._convert_rect(path, has_transform_applied)
 
         return None
@@ -53,6 +55,7 @@ class VNPathElement(VNBaseElement):
         self, path: inkex.PathElement, has_transform_applied: bool
     ) -> Optional[inkex.Rectangle]:
         # rectangle cannot have smooth nodes
+        # TODO this could cause rounded rect to not work?
         if not all(p.is_sharp for p in self.pathGeometries):
             return None
 
@@ -174,5 +177,4 @@ class shapeParameter:
         rect = self.additionalValue.get("rectangle")
         if rect is not None:
             return rect["cornerRadius"]
-        return None
         return None
