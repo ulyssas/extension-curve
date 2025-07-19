@@ -27,7 +27,7 @@ def to_pretty_xml(xml_string: bytes) -> bytes:
 
 
 def asdict_shallow(obj) -> Dict:
-    """Convert dataclasses into dict, but only the to-level."""
+    """Convert dataclasses into dict, but only the top-level."""
     return {f.name: getattr(obj, f.name) for f in fields(obj)}
 
 

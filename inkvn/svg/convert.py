@@ -639,6 +639,7 @@ class CurveConverter:
                 path.attrib.pop("d", None)
 
     def set_tspan_style(self, elem: inkex.Tspan, styled: singleStyledText) -> None:
+        """Parse font, fill/stroke and decorations."""
         # weight, style
         # Condensed is not supported
         known_styles = {

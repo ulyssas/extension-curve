@@ -94,3 +94,18 @@ class VNTransform:
             tr.add_skewx(shear_deg)
 
         return tr
+
+    def convert_scale(self, keep_proportion=False) -> inkex.transforms.Transform:
+        """
+        Creates a scale transform in inkex.transforms.Transform.
+
+        keep_proportion applies scaling in x axis to y axis as well.
+        """
+        tr = inkex.transforms.Transform()
+        sx, sy = self.scale
+
+        if sx != 1 or sy != 1:
+            if keep_proportion:
+                tr.add_scale(sx)
+            else:
+                tr.add_scale(sx, sy)
