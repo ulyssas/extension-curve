@@ -109,3 +109,5 @@ class VNTransform:
                 tr.add_scale(sx)
             else:
                 tr.add_scale(sx, sy)
+
+        return tr
