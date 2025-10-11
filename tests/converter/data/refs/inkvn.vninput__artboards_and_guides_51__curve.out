@@ -1,0 +1,40 @@
+<!-- Converted by extension-curve -->
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:svg="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd" xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape" viewBox="0 0 800 600" width="800px" height="600px">
+  <defs>
+    <linearGradient x1="61.92993475696289" y1="-28.107731842345146" x2="339.602859028049" y2="562.241426516539" gradientUnits="userSpaceOnUse" id="linearGradient5815">
+      <stop offset="0.5123741610738255" style="stop-color:#3ED7FF;stop-opacity:0.7200000286102295"/>
+      <stop offset="1" style="stop-color:#FFFFFF;stop-opacity:0"/>
+    </linearGradient>
+  </defs>
+  <sodipodi:namedview>
+    <inkscape:page x="0" y="0" width="800" height="600" inkscape:label="TestingBoard1"/>
+    <sodipodi:guide position="0,360.008" orientation="0,1"/>
+    <sodipodi:guide position="0,239.971" orientation="0,1"/>
+    <inkscape:page x="969.381" y="449.762" width="800" height="600" inkscape:label="VariousShapes"/>
+    <inkscape:page x="-461.673" y="836.417" width="800" height="600" inkscape:label="Gradient"/>
+    <sodipodi:guide position="-42.8831,0" orientation="1,0"/>
+    <sodipodi:guide position="0,-362.288" orientation="0,1"/>
+    <sodipodi:guide position="-397.148,0" orientation="1,0"/>
+    <sodipodi:guide position="261.387,0" orientation="1,0"/>
+    <sodipodi:guide position="0,-572.889" orientation="0,1"/>
+    <sodipodi:guide position="0,-748.499" orientation="0,1"/>
+    <inkscape:page x="524.966" y="1249.01" width="800" height="600" inkscape:label="Texts"/>
+    <inkscape:page x="395.055" y="677.473" width="500" height="500" inkscape:label="Artboard"/>
+  </sodipodi:namedview>
+  <g inkscape:groupmode="layer" inkscape:label="TestingBoard1">
+    <rect x="0" y="0" width="800" height="600" inkscape:label="background" sodipodi:insensitive="true" style="fill:url(#linearGradient5815);fill-rule:nonzero"/>
+    <g inkscape:groupmode="layer" inkscape:label="Layer 1" opacity="1" style="display:inline"/>
+  </g>
+  <g inkscape:groupmode="layer" inkscape:label="VariousShapes" transform="translate(969.381, 449.762)">
+    <g inkscape:groupmode="layer" inkscape:label="Layer 1" opacity="1" style="display:inline"/>
+  </g>
+  <g inkscape:groupmode="layer" inkscape:label="Gradient" transform="translate(-461.673, 836.417)">
+    <g inkscape:groupmode="layer" inkscape:label="Layer 1" opacity="1" style="display:inline"/>
+  </g>
+  <g inkscape:groupmode="layer" inkscape:label="Texts" transform="translate(524.966, 1249.01)">
+    <g inkscape:groupmode="layer" inkscape:label="Layer 1" opacity="1" style="display:inline"/>
+  </g>
+  <g inkscape:groupmode="layer" inkscape:label="Artboard" transform="translate(395.055, 677.473)">
+    <g inkscape:groupmode="layer" inkscape:label="Layer 1" opacity="1" style="display:inline"/>
+  </g>
+</svg>

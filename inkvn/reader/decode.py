@@ -303,6 +303,11 @@ class CurveDecoder:
                         stylable, "abstractPath", self.is_curve
                     )
 
+                # Path (Curve 6.1.0, format 51)
+                # styles are inside pathData in format 51
+                if abstract_path is None and self.file_version >= 51:
+                    abstract_path = self.get_child(stylable, "pathData", self.is_curve)
+
                 if isinstance(abstract_path, dict):
                     # old shape format (elementDescription)
                     elem_desc = element.get("elementDescription")
@@ -527,6 +532,27 @@ class CurveDecoder:
                         sub_path = sub_element
 
                     _add_path(sub_path, path_geometry_list)
+
+        # Path in format 51+
+        subpaths = self.get_child(path_element.styled_data, "subpaths", self.is_curve)
+        if subpaths is not None:
+            # shapeDescription in Newer Curve, same as elementDescription
+            if elem_desc is None:
+                elem_desc = path_element.styled_data.get("inputParams", {}).get(
+                    "shapeDescription"
+                )
+
+            # shapes with params
+            shape = (
+                path_element.styled_data.get("inputParams", {})
+                .get("shape", {})
+                .get("_0")
+            )
+
+            # similar to compoundPath
+            for sub_element in subpaths:
+                sub_path = sub_element
+                _add_path(sub_path, path_geometry_list)
 
         if stroke_type and isinstance(brush_prof_dict, dict):
             brush_profile = self.read_brush(brush_prof_dict)
