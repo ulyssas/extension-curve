@@ -26,7 +26,7 @@ cache:
 test:python:
   parallel:
     matrix:
-      - TOX_ENV: [3.9.0, 3.10.0, 3.11.0, 3.12.0, 3.13.0]
+      - TOX_ENV: [3.10.0, 3.11.0, 3.12.0, 3.13.0, 3.14.0]
   before_script:
     - source /root/pyenv-init
     - pyenv shell $TOX_ENV
@@ -49,7 +49,7 @@ test:coverage:
     - sed -i "/COVERAGE_FILE/a\ \ \ \ PYTHONPATH=$(realpath .):$(realpath extensions)" tox.ini
     - cat tox.ini
     - source /root/pyenv-init
-    - pyenv shell 3.13.0
+    - pyenv shell 3.14.0
     - pip install coverage
     - coverage3 combine .coverage-*
     - coverage3 report -m --precision=2
@@ -58,7 +58,7 @@ test:coverage:
       "Coverage report successfully created; you can access the full HTML report at\n"
       "  https://inkscape.gitlab.io/-/extras/extension-curve/-/jobs/${CI_JOB_ID}/artifacts/htmlcov/index.html"
       "\n\n"
-    - pyenv shell 3.9.0
+    - pyenv shell 3.10.0
     - pip install pylint==2.13.9
     - python3 extensions/tests/add_pylint.py htmlcov/index.html
     - pip install anybadge

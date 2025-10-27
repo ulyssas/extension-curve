@@ -9,17 +9,17 @@ repository = "https://gitlab.com/inkscape/extras/extension-curve"
 keywords = ["extensions", "graphics", "inkscape", "svg", "vector"]
 
 [tool.poetry.dependencies]
-python = ">=3.9,<3.14"
+python = ">=3.10,<3.15"
 inkex = {git = "https://gitlab.com/inkscape/extensions", rev = "1.4.x"}
-pygobject = "3.50.0" # workaround for https://github.com/beeware/toga/issues/3143, remove when inkex removes the gui deps
+pygobject = "3.54.0" # workaround for https://github.com/beeware/toga/issues/3143, remove when inkex removes the gui deps
 
 
 [tool.poetry.group.dev.dependencies]
-pytest = "^8.2.1"
-mypy = "^1.15.0"
-pre-commit = "^4.1.0"
-pytest-cov = "^4.0.0"
-coverage = "^6.2"
+pytest = "^8.4.2"
+mypy = "^1.18.2"
+pre-commit = "^4.3.0"
+pytest-cov = "^7.0.0"
+coverage = "^7.11"
 
 
 [build-system]
