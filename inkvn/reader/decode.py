@@ -472,7 +472,7 @@ class CurveDecoder:
         path_geometry_list: List[pathGeometry] = []
         if isinstance(path_data, dict):
             # textPath for Vectornator
-            text_path = path_data.get("subElement", {}).get("textPath", {}).get("_0")
+            text_path = self.get_child(path_data, "textPath", self.is_curve)
             if text_path is not None:
                 inkex.utils.debug(
                     f"{base_element['name']}: textOnPath is not supported."
@@ -488,7 +488,7 @@ class CurveDecoder:
             # Vectornator (no compound support)
             if not self.is_curve and shape is None:
                 # TODO check if _0 can contain brushProfile (_0 vs _1)
-                shape = path_data.get("subElement", {}).get("shape", {}).get("_0")
+                shape = self.get_child(path_data, "shape", False)
                 brush_prof_dict = (
                     path_data.get("subElement", {})
                     .get("shape", {})
@@ -518,11 +518,11 @@ class CurveDecoder:
             subpaths = self.get_child(compound_path_data, "subpaths", self.is_curve)
             if subpaths is not None:
                 for sub_element in subpaths:
-                    sub_stylable = (
-                        sub_element.get("subElement", {}).get("stylable", {}).get("_0")
+                    sub_stylable = self.get_child(
+                        sub_element, "stylable", self.is_curve
                     )
                     # Vectornator 4.13.5, format 16 and 4.13.4 (14)
-                    if sub_stylable is not None:
+                    if isinstance(sub_stylable, dict):
                         sub_path = sub_stylable["subElement"]["abstractPath"]["_0"][
                             "subElement"
                         ]["pathData"]["_0"]
