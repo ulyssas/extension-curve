@@ -4,16 +4,18 @@ inkvn Reader
 Reads Linearity Curve / Vectornator files and convert them into intermediate data.
 """
 
+import logging
 import zipfile
 from typing import List
 
-import inkex
 from packaging import version
 
 import inkvn.reader.extract as ext
 from inkvn.reader.decode import CurveDecoder
 
 from ..elements.artboard import VNArtboard
+
+logger = logging.getLogger(__name__)
 
 
 class CurveReader:
@@ -48,7 +50,8 @@ class CurveReader:
         # different file versions have incompatible structure.
         # reporting App version & File version greatly helps
         if self.is_debug:
-            inkex.utils.debug(
+            logging.basicConfig(level=logging.INFO)
+            logger.info(
                 f"App version: {self.app_version}, File version: {self.file_version}, File name: {self.archive.filename}"
             )
 
@@ -66,7 +69,7 @@ class CurveReader:
                 )
                 self.artboards.append(decoder.artboard)
             except FileNotFoundError as e:
-                inkex.errormsg(f"read.py: {e} skipped reading the artboard.")
+                logger.error(f"read.py: {e} skipped reading the artboard.")
 
     def convert_unit(self):
         """Convert document unit to SVG."""
@@ -87,7 +90,7 @@ class CurveReader:
         try:
             current_version = version.parse(input_version)
         except version.InvalidVersion:
-            inkex.errormsg(f"Invalid version string: {input_version}")
+            logger.error(f"Invalid version string: {input_version}")
             return False
 
         return current_version >= required_version

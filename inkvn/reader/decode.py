@@ -8,9 +8,8 @@ Needs more Vectornator files and fileFormatVersion 30~39 for reference
 """
 
 import base64
+import logging
 from typing import Any, Dict, List, Optional, Tuple, Union
-
-import inkex
 
 import inkvn.reader.extract as ext
 import inkvn.reader.text as t
@@ -32,6 +31,8 @@ from ..elements.styles import (
     styledElementData,
 )
 from ..elements.text import VNTextElement, singleStyledText, textProperty
+
+logger = logging.getLogger(__name__)
 
 
 class CurveDecoder:
@@ -137,7 +138,10 @@ class CurveDecoder:
             return None
 
         except Exception as e:
-            inkex.errormsg(f"Couldn't read the child element: {e}")
+            logger.error(
+                f"Couldn't read the child element: {e}",
+                exc_info=logger.isEnabledFor(logging.INFO),
+            )
             return None
 
     def get_child_from_id(self, list_key: str, index: int) -> Optional[Dict]:
@@ -340,7 +344,10 @@ class CurveDecoder:
             )
 
         except Exception as e:
-            inkex.errormsg(f"Error reading element: {e}")
+            logger.error(
+                f"Error reading element: {e}",
+                exc_info=logger.isEnabledFor(logging.INFO),
+            )
             return VNBaseElement(**base_element_data)
 
     def read_group(
@@ -474,9 +481,7 @@ class CurveDecoder:
             # textPath for Vectornator
             text_path = self.get_child(path_data, "textPath", self.is_curve)
             if text_path is not None:
-                inkex.utils.debug(
-                    f"{base_element['name']}: textOnPath is not supported."
-                )
+                logger.warning(f"{base_element['name']}: textOnPath is not supported.")
 
             # shapeDescription in Newer Curve, same as elementDescription
             if elem_desc is None:
@@ -504,7 +509,7 @@ class CurveDecoder:
                     .get("brushProfile")
                 )
 
-            # inkex.utils.debug(f"{base_element['name']}: {elem_desc}, {shape}")
+            # logger.info(f"{base_element['name']}: {elem_desc}, {shape}")
 
             # Path Geometry
             _add_path(path_data, path_geometry_list)
@@ -593,9 +598,7 @@ class CurveDecoder:
             # TODO add textPath support
             text_path = self.get_child(text_data, "textPath", True)
             if text_path is not None:
-                inkex.utils.debug(
-                    f"{base_element['name']}: textOnPath is not supported."
-                )
+                logger.warning(f"{base_element['name']}: textOnPath is not supported.")
 
             # texts(layout??), will be named textProperty internally
             if isinstance(text_prop_dict, dict):

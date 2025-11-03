@@ -7,7 +7,7 @@ Decodes Linearity Curve styledTexts and turn them into simpler format.
 import copy
 from typing import Any, Dict, List
 
-from inkex.utils import debug
+from inkex.utils import errormsg
 
 
 def decode_new_text(styled_text: Dict) -> List[Dict]:
@@ -129,7 +129,7 @@ def decode_old_text(unserialized: Dict) -> List[Dict]:
 
         # checking if NSAttributeInfo has successfully parsed
         if not styles or attribute_id < 0 or attribute_id >= len(styles):
-            debug(
+            errormsg(
                 f"Error: attribute_id {attribute_id} is out of range. styles length: {len(styles)}"
             )
 

@@ -3,8 +3,7 @@ inkvn (extension-curve) (2025/1/21)
 
 description: Linearity Curve / Vectornator file importer for Inkscape
 
-! what DOESN'T work (2025/03/15): textOnPath, grid, brush stroke, marker(arrow)
-! and other features I missed
+! what DOESN'T work (2025/11/03): textOnPath, text alignment, grid, marker(arrow), shadow, shapes
 """
 
 import os

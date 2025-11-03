@@ -10,7 +10,7 @@ import json
 import zipfile
 from typing import Any, Dict
 
-import inkex
+from inkex.utils import errormsg
 
 
 def read_json_from_zip(
@@ -45,7 +45,7 @@ def read_json_from_zip(
         )
 
     except (json.JSONDecodeError, FileNotFoundError) as e:
-        inkex.errormsg(
+        errormsg(
             f"Archive name: {archive_name}, Failed to read or parse JSON file '{file_name}': {e}"
         )
         raise
@@ -79,7 +79,7 @@ def read_dat_from_zip(
         )
 
     except Exception as e:
-        inkex.errormsg(
+        errormsg(
             f"Archive name: {archive_name}, Failed to read or encode bitmap file '{file_name}': {e}"
         )
         raise

@@ -5,6 +5,7 @@ Convert the intermediate data to Inkscape read by read.py
 """
 
 import itertools
+import logging
 from typing import List, Optional, Tuple, Union
 
 import inkex
@@ -20,6 +21,8 @@ from ..elements.path import VNPathElement
 from ..elements.styles import VNColor, VNGradient, brushProfile, pathStrokeStyle
 from ..elements.text import VNTextElement, singleStyledText
 from ..reader.read import CurveReader
+
+logger = logging.getLogger(__name__)
 
 
 class CurveConverter:
@@ -172,7 +175,10 @@ class CurveConverter:
                 return None
 
         except Exception as e:
-            inkex.errormsg(f"Error converting element: {e}")
+            logger.error(
+                f"Error converting element: {e}",
+                exc_info=logger.isEnabledFor(logging.INFO),
+            )
             return None
 
     def convert_group(self, group_element: VNGroupElement) -> inkex.Group:
@@ -429,7 +435,7 @@ class CurveConverter:
 
     def convert_base(self, base_element: VNBaseElement) -> inkex.PathElement:
         """Converts a VNBaseElement to an empty SVG path (inkex.PathElement)."""
-        inkex.utils.debug(
+        logger.warning(
             f"{base_element.name}: This element will be imported as empty path."
         )
 
