@@ -52,7 +52,7 @@ class CurveReader:
         if self.is_debug:
             logging.basicConfig(level=logging.INFO)
             logger.info(
-                f"App version: {self.app_version}, File version: {self.file_version}, File name: {self.archive.filename}"
+                f"App version: {self.app_version}, File format: {self.file_version}, File name: {self.archive.filename}"
             )
 
         assert len(artboard_paths), "No artboard paths found in the document."

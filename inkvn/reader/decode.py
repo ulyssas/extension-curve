@@ -266,6 +266,8 @@ class CurveDecoder:
 
             # Stylable (either PathElement or TextElement)
             stylable = self.get_child(element, "stylable", self.is_curve)
+            if stylable is None:
+                stylable = self.get_child(element, "styleable", self.is_curve)
             if isinstance(stylable, dict):
                 # clipping mask
                 mask = bool(stylable.get("mask", 0))
@@ -463,8 +465,6 @@ class CurveDecoder:
         brush_profile = None
         brush_prof_dict = None
         brush_stroke = self.get_child(path_element.styled_data, "brushStroke", True)
-        if isinstance(brush_stroke, dict):
-            brush_prof_dict = self.get_child(brush_stroke, "brushProfile", True)
 
         # fill
         if path_element.color is None and path_element.grad is None:
@@ -489,6 +489,10 @@ class CurveDecoder:
 
             # shapes with params
             shape = path_data.get("inputParams", {}).get("shape", {}).get("_0")
+
+            # Brush Stroke for Vectornator (format 2)
+            if brush_stroke is None:
+                brush_stroke = self.get_child(path_data, "brushStroke", self.is_curve)
 
             # Vectornator (no compound support)
             if not self.is_curve and shape is None:
@@ -559,6 +563,11 @@ class CurveDecoder:
                 sub_path = sub_element
                 _add_path(sub_path, path_geometry_list)
 
+        # Brush processing
+        if isinstance(brush_stroke, dict):
+            brush_prof_dict = self.get_child(
+                brush_stroke, "brushProfile", self.is_curve
+            )
         if stroke_type and isinstance(brush_prof_dict, dict):
             brush_profile = self.read_brush(brush_prof_dict)
 
@@ -738,7 +747,7 @@ class CurveDecoder:
                     "cap": stroke_style["cap"],
                     "dashPattern": stroke_style["dashPattern"],
                     "join": stroke_style["join"],
-                    "position": stroke_style["position"],
+                    "position": stroke_style.get("position"),
                 }
             if (
                 basic_stroke_style is None

@@ -190,12 +190,16 @@ class basicStrokeStyle:
     """cap, dash, join, position"""
 
     def __init__(
-        self, cap: int, dashPattern: Optional[List[float]], join: int, position: int
+        self,
+        cap: int,
+        dashPattern: Optional[List[float]],
+        join: int,
+        position: Optional[int],
     ):
         self.cap: str = self._cap_to_svg(cap)
         self.dashPattern: List[float] = self._process_dash_pattern(dashPattern)
         self.join: str = self._join_to_svg(join)
-        self.position: int = position
+        self.position: Optional[int] = position
 
     def __repr__(self):
         return f"basicStrokeStyle(cap: {self.cap}, dash: {self.dashPattern}, join: {self.join}, pos: {self.position})"
