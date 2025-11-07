@@ -34,7 +34,6 @@ class CurveConverter:
 
     def __init__(self) -> None:
         self.reader: CurveReader
-        self.target_version: int
         self.has_transform_applied: bool
         self.doc: lxml.etree._ElementTree
         self.document: inkex.SvgDocumentElement
@@ -47,9 +46,11 @@ class CurveConverter:
         """
         file version check
 
-        New curve holds path data without transforms
+        New curve holds path data without transforms.
         However, old curve has transforms already applied.
-        I don't know exactly when the behavior has changed, so it's set to 30 as placeholder
+        I don't know exactly when the behavior has changed.
+
+        format 26-40 seems to be the turning point, because format 26 and 40 need some adjustment.
         """
         self.has_transform_applied = reader.file_version < 30
 
@@ -217,6 +218,13 @@ class CurveConverter:
         for child in group_element.groupElements:
             svg_element = self.load_element(child)
             if svg_element is not None:
+                # cancel group transform for clipped abstractImage (40)
+                if (
+                    self.reader.file_version == 40
+                    and clip is not None
+                    and isinstance(svg_element, inkex.Image)
+                ):
+                    svg_element.transform = -group.transform @ svg_element.transform
                 group.add(svg_element)
 
         return group

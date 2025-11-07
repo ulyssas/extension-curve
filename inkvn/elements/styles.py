@@ -199,7 +199,7 @@ class basicStrokeStyle:
         self.cap: str = self._cap_to_svg(cap)
         self.dashPattern: List[float] = self._process_dash_pattern(dashPattern)
         self.join: str = self._join_to_svg(join)
-        self.position: Optional[int] = position
+        self.position: Optional[str] = self._position_to_svg(position)
 
     def __repr__(self):
         return f"basicStrokeStyle(cap: {self.cap}, dash: {self.dashPattern}, join: {self.join}, pos: {self.position})"
@@ -230,6 +230,18 @@ class basicStrokeStyle:
             2: "bevel",
         }
         return join_map.get(join, "miter")
+
+    @staticmethod
+    def _position_to_svg(pos: Optional[int]) -> Optional[str]:
+        """Returns value for stroke-align attribute."""
+        if pos is None:
+            return None
+        pos_map = {
+            -1: "inset",
+            0: "center",
+            1: "outset",
+        }
+        return pos_map.get(pos, "center")
 
 
 @dataclass
