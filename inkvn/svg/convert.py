@@ -389,7 +389,7 @@ class CurveConverter:
                 line_tspan = inkex.Tspan()
                 line_tspan.set("sodipodi:role", "line")
                 line_tspan.set("x", "0")
-                line_tspan.set("y", f"{y_offset}px")
+                line_tspan.set("y", f"{y_offset}")
 
                 para_offset = 0  # offset in para
                 while para_offset < len(para) + 1:
@@ -481,6 +481,14 @@ class CurveConverter:
             elem.style["stroke-linecap"] = stroke.basicStrokeStyle.cap
             elem.style["stroke-linejoin"] = stroke.basicStrokeStyle.join
             elem.style["stroke-dasharray"] = stroke.basicStrokeStyle.dashPattern
+
+            # stroke-align workaround
+            if (
+                stroke.basicStrokeStyle.position is not None
+                and stroke.basicStrokeStyle.position != "center"
+            ):
+                elem.style["stroke-width"] = stroke.width * 2
+                elem.style["paint-order"] = "stroke fill markers"
 
         # marker
         # if stroke.startArrow is not None:
@@ -628,6 +636,7 @@ class CurveConverter:
         # Condensed is not supported
         known_styles = {
             "Regular": ("normal", "normal"),
+            "Regular_Bold": ("bold", "normal"),
             "Plain": ("normal", "normal"),
             "Ultrajada": ("normal", "normal"),
             "Bold": ("bold", "normal"),
@@ -658,8 +667,8 @@ class CurveConverter:
         base_font = " ".join(base_font_parts)
         base_font = f"'{base_font}'"
 
-        elem.style["font-size"] = f"{styled.fontSize}px"
-        elem.style["letter-spacing"] = f"{styled.kerning}px"
+        elem.style["font-size"] = f"{styled.fontSize}"
+        elem.style["letter-spacing"] = f"{styled.kerning}"
         elem.style["font-family"] = base_font
         elem.style["font-weight"] = font_weight
         elem.style["font-style"] = font_style
