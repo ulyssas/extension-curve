@@ -483,12 +483,12 @@ class CurveConverter:
             elem.style["stroke-dasharray"] = stroke.basicStrokeStyle.dashPattern
 
             # stroke-align workaround
-            if (
-                stroke.basicStrokeStyle.position is not None
-                and stroke.basicStrokeStyle.position != "center"
-            ):
-                elem.style["stroke-width"] = stroke.width * 2
-                elem.style["paint-order"] = "stroke fill markers"
+            # if (
+            #    stroke.basicStrokeStyle.position is not None
+            #    and stroke.basicStrokeStyle.position != "center"
+            # ):
+            #    elem.style["stroke-width"] = stroke.width * 2
+            #    elem.style["paint-order"] = "stroke fill markers"
 
         # marker
         # if stroke.startArrow is not None:
