@@ -11,7 +11,7 @@ from inkex.utils import errormsg
 
 
 def decode_new_text(styled_text: Dict) -> List[Dict]:
-    """Decodes upperBound system used by Newer text format, preserving nested structure."""
+    """Decodes upperBound system used by newer text format, preserving nested structure."""
 
     def _collect_upper_bounds(attrib: Dict, upper_bounds: List[int]):
         """collect all upperBounds inside, without duplication"""
@@ -148,10 +148,8 @@ def decode_old_text(unserialized: Dict) -> List[Dict]:
                         "alpha": ns_stroke_color.get("UIAlpha", 1.0),
                     },
                 },
-                "width": max(0, attribute.get("NSStrokeWidth", 1.0)),
+                "width": max(0, abs(attribute.get("NSStrokeWidth", 1.0))),
             }
-            if stroke_style["width"] <= 0:
-                stroke_style = None
 
         # color
         color_data = None

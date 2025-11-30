@@ -598,6 +598,11 @@ class CurveDecoder:
         if text_data is None:
             return VNBaseElement(**base_element)
 
+        # fillGradient in abstractTexts
+        fill_result = self.read_fill(text_data)
+        if isinstance(fill_result, VNGradient):
+            text_element.grad = fill_result
+
         if text_data.get("attributedText") is None:
             # Which one(styledText or text) is which?
             text_prop_dict = self.get_child(text_data, "textProperty", True)
@@ -626,14 +631,13 @@ class CurveDecoder:
             if isinstance(styled_text, dict):
                 string = styled_text["string"]
                 styles = t.decode_new_text(styled_text)
-                styled_text_list = self.read_styled_text(
-                    styles, basic_stroke_style=basic_stroke_style
-                )
+                styled_text_list = self.read_styled_text(styles, basic_stroke_style)
 
             return VNTextElement(
                 string=string,
                 transform=None,
                 styledText=styled_text_list,
+                fillGradient=text_element.grad,
                 textProperty=text_property,
                 **base_element,
             )
@@ -655,18 +659,24 @@ class CurveDecoder:
                 # height = text_prop_dict.get("height")
                 # width = text_prop_dict.get("width")
 
+            # basicStrokeStyle
+            basic_stroke_style = None
+            if text_element.stroke is not None:
+                basic_stroke_style = text_element.stroke.basicStrokeStyle
+
             # styledText
             styled_text = NSKeyedUnarchiver(
                 base64.b64decode(text_data["attributedText"])
             )
             string = styled_text["NSString"]
             styles = t.decode_old_text(styled_text)
-            styled_text_list = self.read_styled_text(styles, text_element)
+            styled_text_list = self.read_styled_text(styles, basic_stroke_style)
 
             return VNTextElement(
                 string=string,
                 transform=transform,
                 styledText=styled_text_list,
+                fillGradient=text_element.grad,
                 textProperty=text_property,  # TODO no text property
                 **base_element,
             )
@@ -674,8 +684,7 @@ class CurveDecoder:
     def read_styled_text(
         self,
         styles: List[Dict],
-        global_style: Optional[styledElementData] = None,
-        basic_stroke_style: Optional[basicStrokeStyle] = None,
+        basic_stroke_style: Optional[basicStrokeStyle],
     ) -> List[singleStyledText]:
         """reads list of style dictionary and converts into list of singleStyledText."""
 
@@ -687,25 +696,12 @@ class CurveDecoder:
             # color
             if style.get("fillColor") is not None:
                 color = VNColor(style["fillColor"])
-            # fallbacks to global style if there's no styles in text data
-            elif global_style is not None and global_style.color is not None:
-                color = global_style.color
 
             # stroke
-            if style.get("strokeStyle") is not None:  # only contains color & width
-                # Vectornator stroke
-                if (
-                    not basic_stroke_style
-                    and global_style is not None
-                    and global_style.stroke is not None
-                ):
-                    basic_stroke_style = global_style.stroke.basicStrokeStyle
-
+            if (
+                style.get("strokeStyle") is not None and basic_stroke_style is not None
+            ):  # only contains color & width
                 stroke = self.read_stroke(style, basic_stroke_style)
-
-            # fallbacks to global style if there's no styles in text data
-            elif global_style is not None and global_style.stroke is not None:
-                stroke = global_style.stroke
 
             styled_text = singleStyledText(
                 length=style["length"],
@@ -715,7 +711,6 @@ class CurveDecoder:
                 kerning=style.get("kerning", 0.0),
                 lineHeight=style.get("lineHeight"),
                 fillColor=color,
-                fillGradient=None,  # TODO gradient must apply globally
                 strokeStyle=stroke,
                 strikethrough=style.get("strikethrough", False),
                 underline=style.get("underline", False),

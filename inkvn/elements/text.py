@@ -19,6 +19,7 @@ class VNTextElement(VNBaseElement):
     transform: Optional[List[float]]
     """legacy transform in matrix."""
     styledText: Optional[List[singleStyledText]]
+    fillGradient: Optional[VNGradient]
     textProperty: Optional[textProperty]
 
 
@@ -31,7 +32,6 @@ class singleStyledText:
     kerning: float
     lineHeight: Optional[Dict]
     fillColor: Optional[VNColor]
-    fillGradient: Optional[VNGradient]
     strokeStyle: Optional[pathStrokeStyle]
     strikethrough: bool
     underline: bool

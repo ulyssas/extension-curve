@@ -399,6 +399,10 @@ class CurveConverter:
 
                     styled = text_element.styledText[styled_index]
 
+                    # remove fillColor if fillGradient exists
+                    if text_element.fillGradient is not None:
+                        styled.fillColor = None
+
                     # set remaining_length
                     if remaining_length <= 0:
                         remaining_length = styled.length
@@ -428,16 +432,35 @@ class CurveConverter:
                     if remaining_length <= 0:
                         styled_index += 1
 
+                # last font decides the line height
                 text.append(line_tspan)
-                y_offset += (
-                    styled.fontSize * line_height
-                )  # last font decides line height
+                y_offset += styled.fontSize * line_height
                 offset += len(para) + 1
 
             if first_font_size > 0:
                 if text.transform is None:
                     text.transform = inkex.transforms.Transform()
                 text.transform.add_translate(0, first_font_size)
+
+            if text_element.fillGradient is not None:
+                gradient_transform = None
+                if text_element.fillGradient.transform is not None:
+                    gradient_transform = text_element.fillGradient.transform
+                elif (
+                    not self.has_transform_applied
+                    and text_element.localTransform is not None
+                ):
+                    gradient_transform = text_element.localTransform.convert_transform(
+                        with_scale=False
+                    )
+                if gradient_transform is not None:
+                    text_element.fillGradient.gradient.set(
+                        "gradientTransform",
+                        -text.transform @ gradient_transform,
+                    )
+                self.set_fill_grad_styles(text, text_element.fillGradient)
+            else:
+                text.style["fill"] = "none"
 
         return text
 
@@ -676,10 +699,6 @@ class CurveConverter:
         # fill
         if styled.fillColor:
             self.set_fill_color_styles(elem, styled.fillColor)
-        # elif styled.fillGradient:
-        #    self.set_fill_grad_styles(tspan, styled.fillGradient)
-        else:
-            elem.style["fill"] = "none"
 
         # stroke
         if styled.strokeStyle:
