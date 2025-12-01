@@ -8,7 +8,7 @@
       <stop offset="0.7651006711409396" style="stop-color:#00FFFE;stop-opacity:1"/>
       <stop offset="0.9798657718120806" style="stop-color:#8146FF;stop-opacity:1"/>
     </linearGradient>
-    <radialGradient cx="182.60897336013204" cy="31.152869660739043" r="157.53012844313585" gradientUnits="userSpaceOnUse" gradientTransform="translate(-4.55377e-05, -39.9998)" id="radialGradient8555">
+    <radialGradient cx="182.60897336013204" cy="31.152869660739043" r="157.53012844313585" gradientUnits="userSpaceOnUse" gradientTransform="translate(-0.000342353, -40.0002)" id="radialGradient8555">
       <stop offset="0" style="stop-color:#FF0000;stop-opacity:1"/>
       <stop offset="0.26272371364653246" style="stop-color:#FFEC00;stop-opacity:1"/>
       <stop offset="0.5978048098434005" style="stop-color:#30FF00;stop-opacity:1"/>
@@ -124,7 +124,7 @@
           <tspan style="font-size:40;letter-spacing:0;font-family:&quot;Helvetica&quot;;font-weight:bold;font-style:normal">LinearGradient</tspan>
         </tspan>
       </text>
-      <text inkscape:label="RadialGradient" style="opacity:1;mix-blend-mode:normal;display:inline;line-height:1;fill:url(#radialGradient8555);fill-rule:nonzero" transform="translate(316.881, 223.244)">
+      <text inkscape:label="RadialGradient" style="opacity:1;mix-blend-mode:normal;display:inline;line-height:1;fill:url(#radialGradient8555);fill-rule:nonzero" transform="translate(316.208, 219.747)">
         <tspan sodipodi:role="line" x="0" y="0.0">
           <tspan style="font-size:40;letter-spacing:0;font-family:&quot;Helvetica&quot;;font-weight:bold;font-style:normal">RadialGradient</tspan>
         </tspan>
@@ -134,14 +134,27 @@
           <tspan style="font-size:40;letter-spacing:0;font-family:&quot;Helvetica&quot;;font-weight:bold;font-style:normal;stroke:#000000;stroke-opacity:1;stroke-width:3;stroke-linecap:butt;stroke-linejoin:round;stroke-dasharray:0">Stroke</tspan>
         </tspan>
       </text>
-      <text inkscape:label="Blurred" style="opacity:1;mix-blend-mode:normal;display:inline;filter:url(#filter5392);line-height:1;fill:none" transform="translate(161.928, 277.929)">
+      <text inkscape:label="Blurred" style="opacity:1;mix-blend-mode:normal;display:inline;filter:url(#filter5392);line-height:1;fill:none" transform="translate(152.932, 275.352)">
         <tspan sodipodi:role="line" x="0" y="0.0">
           <tspan style="font-size:40;letter-spacing:0;font-family:&quot;Helvetica&quot;;font-weight:bold;font-style:normal;fill:#FF0000;fill-opacity:1;fill-rule:nonzero">Blurred</tspan>
         </tspan>
       </text>
-      <text inkscape:label="Shadow" style="opacity:1;mix-blend-mode:normal;display:inline;line-height:1;fill:none" transform="translate(327.955, 277.11)">
+      <text inkscape:label="Shadow" style="opacity:1;mix-blend-mode:normal;display:inline;line-height:1;fill:none" transform="translate(311.005, 275.352)">
         <tspan sodipodi:role="line" x="0" y="0.0">
           <tspan style="font-size:40;letter-spacing:0;font-family:&quot;Helvetica&quot;;font-weight:bold;font-style:normal;fill:#FFFFFF;fill-opacity:1;fill-rule:nonzero">Shadow</tspan>
+        </tspan>
+      </text>
+      <text inkscape:label="Nofill" style="opacity:1;mix-blend-mode:normal;display:inline;line-height:1;fill:none" transform="translate(484.912, 275.352)">
+        <tspan sodipodi:role="line" x="0" y="0.0">
+          <tspan style="font-size:40;letter-spacing:0;font-family:&quot;Helvetica&quot;;font-weight:bold;font-style:normal">No fill</tspan>
+        </tspan>
+      </text>
+      <text inkscape:label="Alphafill" style="opacity:1;mix-blend-mode:normal;display:inline;line-height:1;fill:none" transform="translate(609.692, 275.352)">
+        <tspan sodipodi:role="line" x="0" y="0.0">
+          <tspan style="font-size:40;letter-spacing:0;font-family:&quot;Helvetica&quot;;font-weight:bold;font-style:normal;fill:#FF0000;fill-opacity:1;fill-rule:nonzero">A</tspan>
+          <tspan style="font-size:40;letter-spacing:0;font-family:&quot;Helvetica&quot;;font-weight:bold;font-style:normal;fill:#FF0000;fill-opacity:0.05;fill-rule:nonzero">lpha</tspan>
+          <tspan style="font-size:40;letter-spacing:0;font-family:&quot;Helvetica&quot;;font-weight:bold;font-style:normal;fill:#FF0000;fill-opacity:1;fill-rule:nonzero"> f</tspan>
+          <tspan style="font-size:40;letter-spacing:0;font-family:&quot;Helvetica&quot;;font-weight:bold;font-style:normal;fill:#A4F600;fill-opacity:1;fill-rule:nonzero">ill</tspan>
         </tspan>
       </text>
       <text inkscape:label="Curve" style="opacity:1;mix-blend-mode:normal;display:inline;line-height:1;fill:none" transform="translate(269.821, 410.437)">

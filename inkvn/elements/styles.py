@@ -100,7 +100,7 @@ class VNColor:
 
 class VNGradient:
     """
-    Represents a gradient with gradient and optional transform.
+    Represents a gradient with gradient and legacy transform (optional).
     """
 
     def __init__(

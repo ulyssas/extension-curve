@@ -450,9 +450,7 @@ class CurveConverter:
                     not self.has_transform_applied
                     and text_element.localTransform is not None
                 ):
-                    gradient_transform = text_element.localTransform.convert_transform(
-                        with_scale=False
-                    )
+                    gradient_transform = text_element.localTransform.convert_transform()
                 if gradient_transform is not None:
                     text_element.fillGradient.gradient.set(
                         "gradientTransform",

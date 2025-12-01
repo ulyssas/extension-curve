@@ -126,7 +126,7 @@
           <tspan style="font-size:40.0;letter-spacing:0;font-family:&quot;Helvetica&quot;;font-weight:bold;font-style:normal">LinearGradient</tspan>
         </tspan>
       </text>
-      <text inkscape:label="RadialGradient" style="opacity:1;mix-blend-mode:normal;display:inline;line-height:1;fill:url(#radialGradient8555);fill-rule:nonzero" transform="translate(315.381, 223.244)">
+      <text inkscape:label="RadialGradient" style="opacity:1;mix-blend-mode:normal;display:inline;line-height:1;fill:url(#radialGradient8555);fill-rule:nonzero" transform="translate(314.708, 219.747)">
         <tspan sodipodi:role="line" x="0" y="0.0">
           <tspan style="font-size:40.0;letter-spacing:0;font-family:&quot;Helvetica&quot;;font-weight:bold;font-style:normal">RadialGradient</tspan>
         </tspan>
@@ -136,14 +136,27 @@
           <tspan style="font-size:40.0;letter-spacing:0;font-family:&quot;Helvetica&quot;;font-weight:bold;font-style:normal;stroke:#000000;stroke-opacity:1.0;stroke-width:3.0;stroke-linecap:butt;stroke-linejoin:round;stroke-dasharray:0">Stroke</tspan>
         </tspan>
       </text>
-      <text inkscape:label="Blurred" style="opacity:1;mix-blend-mode:normal;display:inline;filter:url(#filter5392);line-height:1;fill:none" transform="translate(160.428, 277.929)">
+      <text inkscape:label="Blurred" style="opacity:1;mix-blend-mode:normal;display:inline;filter:url(#filter5392);line-height:1;fill:none" transform="translate(151.432, 275.352)">
         <tspan sodipodi:role="line" x="0" y="0.0">
           <tspan style="font-size:40.0;letter-spacing:0;font-family:&quot;Helvetica&quot;;font-weight:bold;font-style:normal;fill:#FF0000;fill-opacity:1.0;fill-rule:nonzero">Blurred</tspan>
         </tspan>
       </text>
-      <text inkscape:label="Shadow" style="opacity:1;mix-blend-mode:normal;display:inline;line-height:1;fill:none" transform="translate(326.455, 277.11)">
+      <text inkscape:label="Shadow" style="opacity:1;mix-blend-mode:normal;display:inline;line-height:1;fill:none" transform="translate(309.505, 275.352)">
         <tspan sodipodi:role="line" x="0" y="0.0">
           <tspan style="font-size:40.0;letter-spacing:0;font-family:&quot;Helvetica&quot;;font-weight:bold;font-style:normal;fill:#FFFFFF;fill-opacity:1.0;fill-rule:nonzero">Shadow</tspan>
+        </tspan>
+      </text>
+      <text inkscape:label="Nofill" style="opacity:1;mix-blend-mode:normal;display:inline;line-height:1;fill:none" transform="translate(483.412, 275.352)">
+        <tspan sodipodi:role="line" x="0" y="0.0">
+          <tspan style="font-size:40.0;letter-spacing:0;font-family:&quot;Helvetica&quot;;font-weight:bold;font-style:normal;fill:#000000;fill-opacity:0.0;fill-rule:nonzero">No fill</tspan>
+        </tspan>
+      </text>
+      <text inkscape:label="Alphafill" style="opacity:1;mix-blend-mode:normal;display:inline;line-height:1;fill:none" transform="translate(608.192, 275.352)">
+        <tspan sodipodi:role="line" x="0" y="0.0">
+          <tspan style="font-size:40.0;letter-spacing:0;font-family:&quot;Helvetica&quot;;font-weight:bold;font-style:normal;fill:#FF0000;fill-opacity:1.0;fill-rule:nonzero">A</tspan>
+          <tspan style="font-size:40.0;letter-spacing:0;font-family:&quot;Helvetica&quot;;font-weight:bold;font-style:normal;fill:#FF0000;fill-opacity:0.05000000074505806;fill-rule:nonzero">lpha</tspan>
+          <tspan style="font-size:40.0;letter-spacing:0;font-family:&quot;Helvetica&quot;;font-weight:bold;font-style:normal;fill:#FF0000;fill-opacity:1.0;fill-rule:nonzero"> f</tspan>
+          <tspan style="font-size:40.0;letter-spacing:0;font-family:&quot;Helvetica&quot;;font-weight:bold;font-style:normal;fill:#A4F600;fill-opacity:1.0;fill-rule:nonzero">ill</tspan>
         </tspan>
       </text>
       <path inkscape:label="(curve)" style="opacity:1;mix-blend-mode:normal;display:inline;stroke:none;fill:#000000;fill-opacity:1;fill-rule:nonzero" d="M 90.4407 350.704 C 90.4407 350.704 125.994 413.245 191.083 405.454 C 256.173 397.663 292.508 338.116 354.328 333.342 C 416.148 328.567 483.412 398.851 483.412 398.851"/>
