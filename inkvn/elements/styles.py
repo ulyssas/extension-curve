@@ -114,7 +114,10 @@ class VNGradient:
         Initializes the Gradient object from a Linearity Curve data.
         """
         self.gradient: inkex.Gradient = self._convert_gradient(
-            tr=fill_transform, stops=stops, type_value=typeRawValue
+            tr=fill_transform, type_value=typeRawValue
+        )
+        self.stops: inkex.Gradient = self._convert_stops(
+            stops=stops, type_value=typeRawValue
         )
         self.transform: Optional[inkex.transforms.Transform] = None
         tr = inkex.transforms.Transform()
@@ -128,12 +131,10 @@ class VNGradient:
             self.transform = tr
 
     def __repr__(self):
-        return f"VNGradient(gradient: {self.gradient}, transform: {self.transform})"
+        return f"VNGradient(gradient: {self.gradient}, stops: {self.stops}, transform: {self.transform})"
 
     @staticmethod
-    def _convert_gradient(
-        tr: Dict[str, Any], stops: List[Dict], type_value: int
-    ) -> inkex.Gradient:
+    def _convert_gradient(tr: Dict[str, Any], type_value: int) -> inkex.Gradient:
         if type_value == 0:  # Linear Gradient
             gradient = inkex.LinearGradient()
             gradient.set("x1", tr["start"][0])
@@ -154,6 +155,15 @@ class VNGradient:
             gradient.set("r", r)
 
         gradient.set("gradientUnits", "userSpaceOnUse")
+
+        return gradient
+
+    @staticmethod
+    def _convert_stops(stops: List[Dict], type_value: int) -> inkex.Gradient:
+        if type_value == 0:
+            gradient = inkex.LinearGradient()
+        elif type_value == 1:
+            gradient = inkex.RadialGradient()
 
         # Add color stops
         for stop in stops:

@@ -1,21 +1,23 @@
 <!-- Converted by extension-curve -->
 <svg xmlns="http://www.w3.org/2000/svg" xmlns:svg="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd" xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape" viewBox="0 0 800 600" width="800px" height="600px">
   <defs>
-    <linearGradient x1="106.12305216548839" y1="216.82703590515757" x2="201.4030521654884" y2="216.82703590515757" gradientUnits="userSpaceOnUse" gradientTransform="translate(-106.123, -226.827)" id="linearGradient5815">
+    <linearGradient id="linearGradient5815">
       <stop offset="0" style="stop-color:#FF0000;stop-opacity:1"/>
       <stop offset="0.26272371364653246" style="stop-color:#FFEC00;stop-opacity:1"/>
       <stop offset="0.5978048098434005" style="stop-color:#30FF00;stop-opacity:1"/>
       <stop offset="0.7651006711409396" style="stop-color:#00FFFE;stop-opacity:1"/>
       <stop offset="0.9798657718120806" style="stop-color:#8146FF;stop-opacity:1"/>
     </linearGradient>
-    <radialGradient cx="290.23202552562043" cy="217.9798853003174" r="157.53012844313585" gradientUnits="userSpaceOnUse" gradientTransform="translate(-106.123, -226.827)" id="radialGradient8555">
+    <linearGradient x1="106.12305216548839" y1="216.82703590515757" x2="201.4030521654884" y2="216.82703590515757" gradientUnits="userSpaceOnUse" gradientTransform="translate(-106.123, -226.827)" xlink:href="#linearGradient5815" id="linearGradient8555"/>
+    <radialGradient id="radialGradient5392">
       <stop offset="0" style="stop-color:#FF0000;stop-opacity:1"/>
       <stop offset="0.26272371364653246" style="stop-color:#FFEC00;stop-opacity:1"/>
       <stop offset="0.5978048098434005" style="stop-color:#30FF00;stop-opacity:1"/>
       <stop offset="0.7651006711409396" style="stop-color:#00FFFE;stop-opacity:1"/>
       <stop offset="0.9798657718120806" style="stop-color:#8146FF;stop-opacity:1"/>
     </radialGradient>
-    <filter color-interpolation-filters="sRGB" id="filter5392">
+    <radialGradient cx="290.23202552562043" cy="217.9798853003174" r="157.53012844313585" gradientUnits="userSpaceOnUse" gradientTransform="translate(-106.123, -226.827)" xlink:href="#radialGradient5392" id="radialGradient9603"/>
+    <filter color-interpolation-filters="sRGB" id="filter4306">
       <feGaussianBlur stdDeviation="3.489042599995931" result="blur"/>
     </filter>
   </defs>
@@ -121,12 +123,12 @@
           <tspan style="font-size:18.0;letter-spacing:0;font-family:&quot;Helvetica&quot;;font-weight:normal;font-style:normal;fill:#000000;fill-opacity:1.0;fill-rule:nonzero">Height: 20pt</tspan>
         </tspan>
       </text>
-      <text inkscape:label="LinearGradient" style="opacity:1;mix-blend-mode:normal;display:inline;line-height:1;fill:url(#linearGradient5815);fill-rule:nonzero" transform="translate(7.67614, 219.747)">
+      <text inkscape:label="LinearGradient" style="opacity:1;mix-blend-mode:normal;display:inline;line-height:1;fill:url(#linearGradient8555);fill-rule:nonzero" transform="translate(7.67614, 219.747)">
         <tspan sodipodi:role="line" x="0" y="0.0">
           <tspan style="font-size:40.0;letter-spacing:0;font-family:&quot;Helvetica&quot;;font-weight:bold;font-style:normal">LinearGradient</tspan>
         </tspan>
       </text>
-      <text inkscape:label="RadialGradient" style="opacity:1;mix-blend-mode:normal;display:inline;line-height:1;fill:url(#radialGradient8555);fill-rule:nonzero" transform="translate(314.708, 219.747)">
+      <text inkscape:label="RadialGradient" style="opacity:1;mix-blend-mode:normal;display:inline;line-height:1;fill:url(#radialGradient9603);fill-rule:nonzero" transform="translate(314.708, 219.747)">
         <tspan sodipodi:role="line" x="0" y="0.0">
           <tspan style="font-size:40.0;letter-spacing:0;font-family:&quot;Helvetica&quot;;font-weight:bold;font-style:normal">RadialGradient</tspan>
         </tspan>
@@ -136,7 +138,7 @@
           <tspan style="font-size:40.0;letter-spacing:0;font-family:&quot;Helvetica&quot;;font-weight:bold;font-style:normal;stroke:#000000;stroke-opacity:1.0;stroke-width:3.0;stroke-linecap:butt;stroke-linejoin:round;stroke-dasharray:0">Stroke</tspan>
         </tspan>
       </text>
-      <text inkscape:label="Blurred" style="opacity:1;mix-blend-mode:normal;display:inline;filter:url(#filter5392);line-height:1;fill:none" transform="translate(151.432, 275.352)">
+      <text inkscape:label="Blurred" style="opacity:1;mix-blend-mode:normal;display:inline;filter:url(#filter4306);line-height:1;fill:none" transform="translate(151.432, 275.352)">
         <tspan sodipodi:role="line" x="0" y="0.0">
           <tspan style="font-size:40.0;letter-spacing:0;font-family:&quot;Helvetica&quot;;font-weight:bold;font-style:normal;fill:#FF0000;fill-opacity:1.0;fill-rule:nonzero">Blurred</tspan>
         </tspan>

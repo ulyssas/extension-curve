@@ -213,7 +213,7 @@ class CurveConverter:
             self.document.defs.add(clip)
 
         if clip is not None:
-            group.style["clip-path"] = f"url(#{clip.get_id()})"
+            group.style["clip-path"] = clip.get_id(2)
 
         for child in group_element.groupElements:
             svg_element = self.load_element(child)
@@ -263,7 +263,7 @@ class CurveConverter:
             if clip_element is not None:
                 clip.add(clip_element)
                 self.document.defs.add(clip)
-                image.style["clip-path"] = f"url(#{clip.get_id()})"
+                image.style["clip-path"] = clip.get_id(2)
 
         return image
 
@@ -513,9 +513,9 @@ class CurveConverter:
 
         # marker
         # if stroke.startArrow is not None:
-        #    #elem.style["marker-start"] = f"url(#{clip.get_id()})"
+        #    #elem.style["marker-start"] = clip.get_id(2)
         # if stroke.endArrow is not None:
-        #    #elem.style["marker-end"] = f"url(#{clip.get_id()})"
+        #    #elem.style["marker-end"] = clip.get_id(2)
 
     def set_fill_color_styles(self, elem: inkex.BaseElement, fill: VNColor) -> None:
         """Apply fillColor to inkex.BaseElement."""
@@ -525,8 +525,12 @@ class CurveConverter:
 
     def set_fill_grad_styles(self, elem: inkex.BaseElement, fill: VNGradient) -> None:
         """Apply fillGradient to inkex.BaseElement."""
+
+        self.document.defs.add(fill.stops)
+        fill.gradient.set(inkex.addNS("href", "xlink"), fill.stops.get_id(1))
+
         self.document.defs.add(fill.gradient)
-        elem.style["fill"] = f"url(#{fill.gradient.get_id()})"
+        elem.style["fill"] = fill.gradient.get_id(2)
         elem.style["fill-rule"] = "nonzero"
 
     def set_power_stroke(self, elem: inkex.ShapeElement, brush: brushProfile) -> None:
@@ -640,7 +644,7 @@ class CurveConverter:
         if path_effect_str:
             elem.set("inkscape:path-effect", f"{path_effect_str};{effect.get_id(1)}")
         else:
-            elem.set("inkscape:path-effect", f"{effect.get_id(1)}")
+            elem.set("inkscape:path-effect", effect.get_id(1))
             elem.set("inkscape:original-d", str(elem.path))
 
     @staticmethod
