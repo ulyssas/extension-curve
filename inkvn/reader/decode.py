@@ -112,11 +112,11 @@ class CurveDecoder:
             if isinstance(elem.get("subElement"), dict):
                 sub_vn = elem.get("subElement", {}).get(key, {}).get("_0")
 
-                # ! singleStyle in Vectornator 4.13.6 (19)
+                # ! Vectornator 4.13.6 (19), singleStyle sub as abstractPath
                 if sub_vn is None and self.file_version == 19 and key == "abstractPath":
                     sub_vn = elem.get("subElement")
 
-            # ! singleStyles in Curve 5.1.2 (21) (the exceptions)
+            # ! Curve 5.1.2 (21), singleStyle sub as abstractPath
             elif isinstance(elem.get("subElement"), int) and key == "abstractPath":
                 sub_vn = elem.get("subElement")
 
@@ -297,7 +297,7 @@ class CurveDecoder:
                     elif isinstance(fill_result, VNColor):
                         fill_color = fill_result
 
-                    # get abstract path from single_style
+                    # get abstract path from single_style (subElement)
                     abstract_path = self.get_child(
                         single_style, "abstractPath", self.is_curve
                     )
@@ -331,6 +331,13 @@ class CurveDecoder:
                 # Abstract Text (TextElement)
                 text_data = self.get_child(stylable, "text", self.is_curve)
                 if isinstance(text_data, dict):
+                    # Gradient fill transform for Text (singleStyle-like, 19)
+                    fill_transform = self.get_child(
+                        stylable, "fillTransform", self.is_curve
+                    )
+                    if isinstance(fill_transform, dict):
+                        text_data["fillTransform"] = fill_transform
+
                     text_element_data = styledElementData(
                         styled_data=text_data,
                         mask=mask,
@@ -672,6 +679,15 @@ class CurveDecoder:
             styles = t.decode_old_text(styled_text)
             styled_text_list = self.read_styled_text(styles, basic_stroke_style)
 
+            # Use global fillColor if there's no fill color.
+            if (
+                all(style.fillColor is None for style in styled_text_list)
+                and text_element.grad is None
+                and text_element.color
+            ):
+                for style in styled_text_list:
+                    style.fillColor = text_element.color
+
             return VNTextElement(
                 string=string,
                 transform=transform,
@@ -728,7 +744,6 @@ class CurveDecoder:
         """
         stroke_style = self.get_child(stylable, "strokeStyle", self.is_curve)
         if stroke_style is None and stylable.get("strokeStyle") is not None:
-            # read_styled_text
             stroke_style = stylable["strokeStyle"]
 
         if isinstance(stroke_style, dict):
