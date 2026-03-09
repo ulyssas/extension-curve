@@ -31,7 +31,7 @@ test:python:
     - source /root/pyenv-init
     - pyenv shell $TOX_ENV
     - pip install poetry-plugin-export==1.9.0
-    - poetry export --with=dev --without-hashes --output=requirements.txt && cat requirements.txt 
+    - poetry export --with=dev --without-hashes --output=requirements.txt && cat requirements.txt
   script:
     - tox -e py -- --cov=. --cov-report html --cov-report term
   artifacts:
@@ -73,11 +73,15 @@ test:coverage:
       - htmlcov/
 
 test:validate-inx:
+  before_script:
+    - source /root/pyenv-init
+    - pyenv shell 3.11.0
   script:
     - git clone https://gitlab-ci-token:${CI_JOB_TOKEN}@gitlab.com/inkscape/extensions.git --depth 1
     - apt-get update && apt-get install libxml2-utils
+    - pip install ./extensions
     - xmllint --noout --relaxng extensions/inkex/tester/inkscape.extension.rng *.inx
-    - xmllint --noout --schematron extensions/inkex/tester/inkscape.extension.schema *.inx
+    - for f in *.inx; do python3 -m inkex.tester.test_inx_file "$f"; done
 
 test:compliance:
   stage: test

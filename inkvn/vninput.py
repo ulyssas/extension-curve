@@ -23,6 +23,8 @@ sys.path.insert(0, os.path.abspath(os.path.join(HERE, "..")))
 class CurveInput(inkex.InputExtension):
     """Open and convert .curve / .vectornator files."""
 
+    multi_inx = True
+
     # copied from inkaf
 
     def add_arguments(self, pars):
